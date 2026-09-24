@@ -112,3 +112,10 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# OS generated files
+.DS_Store
+.idea/
+
+# User-specific files
+Assets/Resources/Mapbox/MapboxConfiguration.txt
