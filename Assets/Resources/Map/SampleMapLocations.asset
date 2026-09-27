@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 034493258bcfedb9ea975170f6b53d01, type: 3}
+  m_Name: SampleMapLocations
+  m_EditorClassIdentifier: Assembly-CSharp::MemeHunter.UI.MapLocationCollectionData
+  locations:
+  - meme: {fileID: 11400000, guid: 4ccb0ecba74427ff28cf6fed49841b8a, type: 2}
+    normalizedPosition: {x: 0.15, y: 0.77}
+  - meme: {fileID: 11400000, guid: 4ccb0ecba74427ff28cf6fed49841b8a, type: 2}
+    normalizedPosition: {x: 0.58, y: 0.72}
+  - meme: {fileID: 11400000, guid: 4ccb0ecba74427ff28cf6fed49841b8a, type: 2}
+    normalizedPosition: {x: 0.34, y: 0.51}
+  - meme: {fileID: 11400000, guid: 8ad403383cf2568829d01890816c7dd5, type: 2}
+    normalizedPosition: {x: 0.67, y: 0.34}
+  - meme: {fileID: 11400000, guid: 4ccb0ecba74427ff28cf6fed49841b8a, type: 2}
+    normalizedPosition: {x: 0.21, y: 0.23}
