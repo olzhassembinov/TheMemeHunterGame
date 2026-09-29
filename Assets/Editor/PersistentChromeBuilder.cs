@@ -32,21 +32,6 @@ namespace MemeHunter.Editor
             var rootName = "Persistent Bottom Decoration";
             var layoutRoot = MakeRect(rootName, null, new Vector2(250f, 1f));
             var lineSprite = AssetDatabase.LoadAssetAtPath<Sprite>(LineSpritePath);
-            var leftLine = MakeLine("Left Decorative Line", layoutRoot.transform, lineSprite);
-            var rightLine = MakeLine("Right Decorative Line", layoutRoot.transform, lineSprite);
-
-            var decoration = layoutRoot.AddComponent<PersistentBottomDecoration>();
-            SetReference(decoration, "layoutRoot", layoutRoot.transform);
-            SetReference(decoration, "leftLineRect", leftLine.rectTransform);
-            SetReference(decoration, "rightLineRect", rightLine.rectTransform);
-            SetReference(decoration, "leftLine", leftLine);
-            SetReference(decoration, "rightLine", rightLine);
-            SetFloat(decoration, "lineWidth", 109f);
-            SetFloat(decoration, "lineHeight", 1f);
-            SetFloat(decoration, "centerGap", 32f);
-            SetFloat(decoration, "bottomInset", 16f);
-            SetColor(decoration, "lineColor", MemeHunterUiColors.DarkNavy);
-            SetBool(decoration, "persistAcrossScenes", true);
 
             var prefab = PrefabUtility.SaveAsPrefabAsset(layoutRoot, PrefabPath);
             Object.DestroyImmediate(layoutRoot);

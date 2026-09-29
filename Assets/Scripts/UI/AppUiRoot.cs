@@ -14,7 +14,6 @@ namespace MemeHunter.UI
         [SerializeField] RectTransform safeAreaRoot;
         [SerializeField] RectTransform screensRoot;
         [SerializeField] RectTransform persistentRoot;
-        [SerializeField] GameObject persistentBottomDecorationPrefab;
         [SerializeField] string welcomeSceneName = "WelcomeScreen";
 
         static AppUiRoot instance;
@@ -88,9 +87,6 @@ namespace MemeHunter.UI
 
             screensRoot = EnsureRectTransform(screensRoot, "Screens", safeAreaRoot);
             persistentRoot = EnsureRectTransform(persistentRoot, "Persistent UI", safeAreaRoot);
-
-            if (persistentBottomDecorationPrefab != null && persistentRoot.GetComponentInChildren<PersistentBottomDecoration>(true) == null)
-                Instantiate(persistentBottomDecorationPrefab, persistentRoot, false);
 
             var welcomeViewTransform = EnsureRectTransform(null, "Welcome", screensRoot);
             welcomeView = welcomeViewTransform.GetComponent<ScreenView>();
