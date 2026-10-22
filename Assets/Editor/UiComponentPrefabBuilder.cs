@@ -197,7 +197,10 @@ namespace MemeHunter.Editor
             fullCardRect.anchorMax = new Vector2(0.5f, 1f);
             fullCardRect.pivot = new Vector2(0.5f, 1f);
             fullCardRect.anchoredPosition = new Vector2(0f, -2f);
-            fullCard.GetComponent<MemeCardView>().Bind(data.BestMemeArtwork, data.BestMemeTitle, string.Empty, MemeHunterUiColors.CommonGrey);
+            fullCard.GetComponent<MemeCardView>().Bind(data.BestMemeArtworks[0], data.BestMemeTitles[0], string.Empty, MemeHunterUiColors.CommonGrey);
+            fullCard.GetComponent<MemeCardView>().Bind(data.BestMemeArtworks[1], data.BestMemeTitles[1], string.Empty, MemeHunterUiColors.CommonGrey);
+            fullCard.GetComponent<MemeCardView>().Bind(data.BestMemeArtworks[2], data.BestMemeTitles[2], string.Empty, MemeHunterUiColors.CommonGrey);
+            fullCard.GetComponent<MemeCardView>().Bind(data.BestMemeArtworks[3], data.BestMemeTitles[3], string.Empty, MemeHunterUiColors.CommonGrey);
 
             var emptyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabFolder + "/EmptyMemeCard.prefab");
             var emptyOffsets = new[] { -146f, 0f, 146f };

@@ -11,10 +11,10 @@ namespace MemeHunter.UI
         [SerializeField, Min(1)] int level = 12;
         [SerializeField, Min(0)] int currentXp = 220;
         [SerializeField, Min(1)] int xpForNextLevel = 860;
-        [SerializeField, Min(0)] int score = 6099;
+        [SerializeField, Min(0)] int money = 6099;
         [SerializeField] Sprite profilePhoto;
-        [SerializeField] string bestMemeTitle = "B-HOPPING";
-        [SerializeField] Sprite bestMemeArtwork;
+        [SerializeField] string[] bestMemeTitles;
+        [SerializeField] Sprite[] bestMemeArtworks;
 
         public string Nickname => nickname;
         public int Age => age;
@@ -22,9 +22,16 @@ namespace MemeHunter.UI
         public int Level => level;
         public int CurrentXp => currentXp;
         public int XpForNextLevel => xpForNextLevel;
-        public int Score => score;
+        public int Money => money;
         public Sprite ProfilePhoto => profilePhoto;
-        public string BestMemeTitle => bestMemeTitle;
-        public Sprite BestMemeArtwork => bestMemeArtwork;
+        public string[] BestMemeTitles => bestMemeTitles;
+        public Sprite[] BestMemeArtworks => bestMemeArtworks;
+
+        public void SetPlayer(string _name, string _city, int _age)
+        {
+            nickname = _name;
+            city = _city;
+            age = _age;
+        }
     }
 }

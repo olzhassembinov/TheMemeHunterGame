@@ -5,12 +5,12 @@ using UnityEngine.UI;
 
 namespace MemeHunter.UI
 {
-    public sealed class MemeCardView : MonoBehaviour
+    public class MemeCardView : MonoBehaviour
     {
-        [SerializeField] Image cardFrame;
-        [SerializeField] Image artwork;
-        [SerializeField] TMP_Text titleText;
-        [SerializeField] RarityIndicatorView rarityIndicator;
+        [SerializeField] protected Image cardFrame;
+        [SerializeField] protected Image artwork;
+        [SerializeField] protected TMP_Text titleText;
+        [SerializeField] protected RarityIndicatorView rarityIndicator;
 
         public void SetArtwork(Sprite sprite)
         {
@@ -21,8 +21,10 @@ namespace MemeHunter.UI
             }
         }
 
-        public void Bind(Sprite sprite, string title, string rarity, Color rarityColor)
+        public void Bind(Sprite sprite = null, string title = null, string rarity = null, Color rarityColor = new Color())
         {
+            if(sprite == null && title == null && rarity == null && rarityColor == null) Debug.LogError("Bind got an empty sprite. HOW? Idk.");
+
             SetArtwork(sprite);
 
             if (titleText != null)

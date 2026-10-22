@@ -18,7 +18,15 @@ MonoBehaviour:
   level: 12
   currentXp: 220
   xpForNextLevel: 860
-  score: 6099
+  money: 6099
   profilePhoto: {fileID: 21300000, guid: 6c2a7a0c610db735a91e1fa364703fdf, type: 3}
-  bestMemeTitle: B-HOPPING
-  bestMemeArtwork: {fileID: 0}
+  bestMemeTitles:
+  - B-Hopping
+  - 
+  - 
+  - 
+  bestMemeArtworks:
+  - {fileID: 21300000, guid: bd0b7f002dc82c2958ba09ccfb2c7bf0, type: 3}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}

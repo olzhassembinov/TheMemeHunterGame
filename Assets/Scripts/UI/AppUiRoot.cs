@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -16,7 +17,11 @@ namespace MemeHunter.UI
         [SerializeField] RectTransform persistentRoot;
         [SerializeField] string welcomeSceneName = "WelcomeScreen";
 
-        static AppUiRoot instance;
+
+        public bool Is_ready {get; private set;} = true;
+        private IEnumerator mainEnumerator; //This required to manage screen touching
+
+        public static AppUiRoot instance;
         ScreenView welcomeView;
 
         public RectTransform ScreensRoot => screensRoot;
@@ -124,5 +129,29 @@ namespace MemeHunter.UI
             current.localScale = Vector3.one;
             return current;
         }
+
+#region Managing screen touching privilegies
+
+        public void SetFree(IEnumerator enumerator)
+        {
+            if(mainEnumerator == enumerator){
+                StopCoroutine(mainEnumerator);
+                mainEnumerator = null;
+                Is_ready = true;
+            }
+        } 
+        public bool SetBusy(IEnumerator enumerator)
+        {
+            if(!Is_ready)
+                return false;
+            mainEnumerator = enumerator;
+            StartCoroutine(enumerator);
+            Is_ready = false;
+            return true;
+        } 
+
+        
+
+#endregion
     }
 }

@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using MemeHunter.UI;
 
 public class WelcomeScreenStartGame : MonoBehaviour
 {
@@ -9,6 +10,8 @@ public class WelcomeScreenStartGame : MonoBehaviour
     [SerializeField] private TMP_InputField month;
     [SerializeField] private TMP_InputField year;
     [SerializeField] private TMP_InputField city;
+
+    [SerializeField] ProfilePresentationData profileData;
 
     public void SubmitInfo()
     {
@@ -23,8 +26,9 @@ public class WelcomeScreenStartGame : MonoBehaviour
             return;
         }
 
-        PlayerPrefs.SetString("Nickname", nickname.text);
-        PlayerPrefs.SetString("City", city.text);
+        
+        profileData.SetPlayer(nickname.text, city.text, 2026-intYear);
+
         PlayerPrefs.SetInt("Day", intDay);
         PlayerPrefs.SetInt("Month", intMonth);
         PlayerPrefs.SetInt("Year", intYear);

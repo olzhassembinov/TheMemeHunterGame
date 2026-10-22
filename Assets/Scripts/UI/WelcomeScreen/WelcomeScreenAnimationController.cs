@@ -1,26 +1,30 @@
 using System.Collections;
+using MemeHunter.UI;
 using UnityEngine;
 public class WelcomeScreenAnimationController : MonoBehaviour
 {
     [SerializeField] private GameObject screenOne;
     [SerializeField] private GameObject screenTwo;
 
-    public bool Is_ready {get; private set;} = true;
+    private IEnumerator swapAnimation;
+
 
     private Vector2 screenSize = new Vector2(498f,0f);
 
     public void StartContinueAnimation()
     {
-        if(!Is_ready) return;
-        Is_ready = false;
-        StartCoroutine(SwapAnimation(-screenSize));
+        if(!AppUiRoot.instance.Is_ready) return;
+        swapAnimation = SwapAnimation(-screenSize);
+        AppUiRoot.instance.SetBusy(swapAnimation);
     }
 
     public void StartBackAnimation()
     {
-        if(!Is_ready) return;
-        Is_ready = false;
-        StartCoroutine(SwapAnimation(screenSize));
+        if(!AppUiRoot.instance.Is_ready) return;
+        
+        swapAnimation = SwapAnimation(screenSize);
+
+        AppUiRoot.instance.SetBusy(swapAnimation);
     }
 
     private IEnumerator SwapAnimation(Vector2 moveBy)
@@ -39,6 +43,6 @@ public class WelcomeScreenAnimationController : MonoBehaviour
             yield return null;
         }
         yield return null;
-        Is_ready = true;
+        AppUiRoot.instance.SetFree(swapAnimation);
     }
 }

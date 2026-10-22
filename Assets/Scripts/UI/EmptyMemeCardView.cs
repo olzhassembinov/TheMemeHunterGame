@@ -5,10 +5,10 @@ using UnityEngine.UI;
 namespace MemeHunter.UI
 {
     [RequireComponent(typeof(Button))]
-    public sealed class EmptyMemeCardView : MonoBehaviour
+    public sealed class EmptyMemeCardView : MemeCardView
     {
         [SerializeField] Button button;
-        [SerializeField] Image outline;
+        [SerializeField] Image outline; 
 
         UnityAction assignedAction;
 

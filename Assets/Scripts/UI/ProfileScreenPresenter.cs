@@ -1,4 +1,5 @@
 using TMPro;
+using Unity.Tutorials.Editor;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -13,13 +14,20 @@ namespace MemeHunter.UI
         [SerializeField] TMP_Text subtitleText;
         [SerializeField] TMP_Text levelText;
         [SerializeField] XpProgressView xpProgress;
-        [SerializeField] TMP_Text scoreText;
-        [SerializeField] MemeCardView bestMemeCard;
+        [SerializeField] TMP_Text moneyText;
+        private MemeCardView[] bestMemeCards = new MemeCardView[4];
         [SerializeField] ProfileTabBarView tabBar;
         [SerializeField] CircularActionButton backButton;
         [SerializeField] string backSceneName = "WelcomeScreen";
 
+        [SerializeField] private GameObject bestMemeCardPrefab;
+        [SerializeField] private GameObject emptyBestMemeCardPrefab;
+
+        [SerializeField] private Transform cardContent;
+
         public UnityEvent BackRequested = new UnityEvent();
+
+        private Vector2[] bestCardsPosition = {new Vector2(-117,0), new Vector2(117,0), new Vector2(-117,-324), new Vector2(117, -324)};
 
         void Awake()
         {
@@ -51,10 +59,23 @@ namespace MemeHunter.UI
                 levelText.text = data.Level.ToString();
             if (xpProgress != null)
                 xpProgress.Bind(data.CurrentXp, data.XpForNextLevel);
-            if (scoreText != null)
-                scoreText.text = data.Score.ToString();
-            if (bestMemeCard != null)
-                bestMemeCard.Bind(data.BestMemeArtwork, data.BestMemeTitle, string.Empty, MemeHunterUiColors.CommonGrey);
+            if (moneyText != null)
+                moneyText.text = data.Money.ToString();
+            for(int i = 0; i<4; i++)
+            {
+                if(data.BestMemeArtworks[i]!=null || !data.BestMemeTitles[i].IsNullOrEmpty()){
+                    GameObject gameObj = Instantiate(bestMemeCardPrefab, cardContent);
+                    gameObj.GetComponent<RectTransform>().anchoredPosition = bestCardsPosition[i];
+                    bestMemeCards[i] = gameObj.GetComponent<MemeCardView>();
+                    bestMemeCards[i].Bind(data.BestMemeArtworks[i], data.BestMemeTitles[i], string.Empty, MemeHunterUiColors.CommonGrey);
+                }
+                else{
+                    GameObject gameObj = Instantiate(emptyBestMemeCardPrefab, cardContent);
+                    gameObj.GetComponent<RectTransform>().anchoredPosition = bestCardsPosition[i];
+                    bestMemeCards[i] = gameObj.GetComponent<MemeCardView>();
+                    bestMemeCards[i].Bind();
+                }
+            }
         }
     }
 }
