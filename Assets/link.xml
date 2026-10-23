@@ -1,0 +1,6 @@
+<linker>
+  <!-- Keep our JSON classes in phone builds (IL2CPP stripping would remove them and JSON would silently return nulls) -->
+  <assembly fullname="Assembly-CSharp">
+    <namespace fullname="MemeHunter.Net" preserve="all"/>
+  </assembly>
+</linker>
