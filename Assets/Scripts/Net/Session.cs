@@ -1,4 +1,5 @@
 using System;
+using Newtonsoft.Json;
 using UnityEngine;
 
 namespace MemeHunter.Net
@@ -10,6 +11,7 @@ namespace MemeHunter.Net
     public static class Session
     {
         const string PlayerIdKey = "PlayerId";
+        const string HuntKey = "ActiveHunt";
 
         /// <summary>Last player data received from the server (null until fetched).</summary>
         public static PlayerDto Player { get; private set; }
@@ -35,9 +37,34 @@ namespace MemeHunter.Net
             PlayerChanged?.Invoke(player);
         }
 
+        // ----- Active hunt: a card the player already claimed and is walking to -----
+
+        /// <summary>The claimed card with its EXACT coordinates, or null. Survives app restarts.</summary>
+        public static ClaimDto ActiveHunt
+        {
+            get
+            {
+                var json = PlayerPrefs.GetString(HuntKey, string.Empty);
+                return string.IsNullOrEmpty(json) ? null : JsonConvert.DeserializeObject<ClaimDto>(json);
+            }
+        }
+
+        public static void SaveHunt(ClaimDto claim)
+        {
+            PlayerPrefs.SetString(HuntKey, JsonConvert.SerializeObject(claim));
+            PlayerPrefs.Save();
+        }
+
+        public static void ClearHunt()
+        {
+            PlayerPrefs.DeleteKey(HuntKey);
+            PlayerPrefs.Save();
+        }
+
         /// <summary>Forget the player completely (used when the server no longer knows the id).</summary>
         public static void Clear()
         {
+            PlayerPrefs.DeleteKey(HuntKey);
             PlayerPrefs.DeleteKey(PlayerIdKey);
             PlayerPrefs.Save();
             Player = null;

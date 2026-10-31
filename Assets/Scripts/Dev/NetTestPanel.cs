@@ -149,6 +149,22 @@ namespace MemeHunter.Dev
                     Log($"Coins now: {player.CurrencyBalance}");
                 });
 
+            // 6. Real GPS check for the phone (in the Editor it shows the fake position).
+            if (Button("6. Start GPS + show my position"))
+                Run(async () =>
+                {
+                    var ok = await Geo.StartAsync();
+                    if (!ok) { Log("GPS not available (permission denied or location off)"); return; }
+                    if (Geo.TryGetFix(out var f))
+                    {
+                        latText = f.Lat.ToString("F6", CultureInfo.InvariantCulture);   // use it for buttons 3 and 5
+                        lngText = f.Lng.ToString("F6", CultureInfo.InvariantCulture);
+                        Log($"Position: {latText}, {lngText}  accuracy +-{f.AccuracyM:F0} m");
+                    }
+                    else
+                        Log("GPS running but no fix yet - wait a few seconds and press again");
+                });
+
             if (Button("Forget saved player"))
             {
                 Session.Clear();
