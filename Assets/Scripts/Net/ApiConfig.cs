@@ -10,9 +10,11 @@ namespace MemeHunter.Net
         // Inside the Unity Editor the backend runs on the same Mac.
         const string EditorUrl = "http://localhost:8000";
 
-        // Default for phone builds. Until the backend is deployed we override it from the DEV test panel
-        // with the Mac's Wi-Fi address (e.g. http://192.168.0.12:8000). After deployment put the real https:// address here.
-        const string DeviceUrl = "https://api.example.com";
+        // Default for phone builds: the deployed backend (Kamatera server).
+        // It is plain HTTP for now, so Android "Allow downloads over HTTP" must stay on "Always allowed"
+        // (ProjectSettings). When the server gets a domain + HTTPS, change this to the https:// address
+        // and set the setting back to "Not allowed".
+        const string DeviceUrl = "http://185.47.174.45:8000";
 
         // PlayerPrefs key where the DEV panel stores a temporary address.
         const string OverrideKey = "ApiBaseUrl";
