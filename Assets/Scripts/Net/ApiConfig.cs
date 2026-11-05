@@ -10,11 +10,8 @@ namespace MemeHunter.Net
         // Inside the Unity Editor the backend runs on the same Mac.
         const string EditorUrl = "http://localhost:8000";
 
-        // Default for phone builds: the deployed backend (Kamatera server).
-        // It is plain HTTP for now, so Android "Allow downloads over HTTP" must stay on "Always allowed"
-        // (ProjectSettings). When the server gets a domain + HTTPS, change this to the https:// address
-        // and set the setting back to "Not allowed".
-        const string DeviceUrl = "http://185.47.174.45:8000";
+        // Default for phone builds: the deployed backend (Kamatera server, nginx + Let's Encrypt HTTPS).
+        const string DeviceUrl = "https://api.zyangame.online";
 
         // PlayerPrefs key where the DEV panel stores a temporary address.
         const string OverrideKey = "ApiBaseUrl";
