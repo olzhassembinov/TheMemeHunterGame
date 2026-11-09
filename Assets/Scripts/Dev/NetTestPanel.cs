@@ -36,7 +36,7 @@ namespace MemeHunter.Dev
 
         void OnGUI()
         {
-            if (!Visible) return;
+            if (!Visible || DevGui.Hidden) return;
 
             var s = DevGui.Scale();
             var w = Screen.width / s;
@@ -134,7 +134,7 @@ namespace MemeHunter.Dev
                 {
                     if (!RequirePlayerAndCard() || !TryPosition(out var lat, out var lng)) return;
 
-                    var jpeg = await PhotoCapture.TakeAsync();     // camera on the phone, file picker in the Editor
+                    var jpeg = await PhotoCapture.TakeNativeAsync();     // camera app on the phone, file picker in the Editor
                     if (jpeg == null) { Log("Photo cancelled"); return; }
                     Log($"Photo ready: {jpeg.Length / 1024} KB. Uploading (can take up to a minute)...");
 

@@ -4,6 +4,9 @@ namespace MemeHunter.Dev
 {
     public static class DevGui
     {
+        /// <summary>True while a photo is being taken: every OnGUI panel returns early so DEV buttons are not in the picture.</summary>
+        public static bool Hidden;
+
         /// <summary>
         /// OnGUI draws in pixels, which are tiny on a 400 dpi phone. Call this first inside OnGUI:
         /// it scales everything so a button is finger-sized, and returns the scale used.

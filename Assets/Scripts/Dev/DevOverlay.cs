@@ -32,6 +32,8 @@ namespace MemeHunter.Dev
 
         void OnGUI()
         {
+            if (DevGui.Hidden) return;
+
             var s = DevGui.Scale();
             var w = Screen.width / s;
 

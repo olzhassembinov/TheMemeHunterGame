@@ -19,6 +19,12 @@ namespace MemeHunter.Net
         /// <summary>Set to false for the final demo build: hides all developer buttons.</summary>
         public const bool ShowDevTools = true;
 
+        /// <summary>
+        /// false: the AR screen is the viewfinder and Catch takes the photo in the app.
+        /// true: open the phone's camera app instead (the old way, a fallback if the in-app photo is too poor).
+        /// </summary>
+        public static readonly bool UseNativeCamera = false;
+
         public const int DefaultTimeoutSeconds = 15;  // normal calls
         public const int SubmitTimeoutSeconds = 60;   // photo upload: backend waits for doskaz.kz
 

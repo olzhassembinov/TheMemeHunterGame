@@ -149,7 +149,7 @@ namespace MemeHunter.Game
         {
             if (busy || hunt == null) return;
 
-            // Position at the moment of pressing (before the camera app takes over the screen).
+            // Position at the moment of pressing (before the photo is taken).
             if (!Geo.TryGetFix(out var fix))
             {
                 Toast.Show("No GPS position yet. Try again in a moment.");
@@ -164,7 +164,7 @@ namespace MemeHunter.Game
             busy = true;
             try
             {
-                // 1) Photo (camera on the phone, file picker in the Editor)
+                // 1) Photo (the AR view on the phone, file picker in the Editor)
                 var jpeg = await PhotoCapture.TakeAsync();
                 if (jpeg == null)
                 {
@@ -219,7 +219,7 @@ namespace MemeHunter.Game
 
         void OnGUI()
         {
-            if (!ApiConfig.ShowDevTools) return;
+            if (!ApiConfig.ShowDevTools || DevGui.Hidden) return;
             DevGui.Scale();
 
             GUILayout.BeginArea(new Rect(8, 40, 190, 280));
