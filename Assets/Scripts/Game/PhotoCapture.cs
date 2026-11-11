@@ -42,6 +42,7 @@ namespace MemeHunter.Game
                 hidden.Add(canvas);
             }
             DevGui.Hidden = true;
+            MemeSpawner.SetPhotoMode(true);          // the virtual meme must not be in the real photo
 
             Texture2D shot = null;
             try
@@ -55,6 +56,7 @@ namespace MemeHunter.Game
                 foreach (var canvas in hidden)
                     if (canvas != null) canvas.enabled = true;
                 DevGui.Hidden = false;
+                MemeSpawner.SetPhotoMode(false);
             }
 
             if (shot == null)

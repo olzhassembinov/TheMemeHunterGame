@@ -17,6 +17,7 @@ namespace MemeHunter.Game
         public static HuntController Instance { get; private set; }
 
         const double CatchRadiusM = 30.0;        // closer than this -> Catch is enabled
+        const double LeaveRadiusM = 50.0;        // Catch is left only beyond this (GPS jumps indoors, so no flicker at 30 m)
         const double MaxSearchRadiusM = 3000.0;  // cards farther than this are ignored (server returns all for now)
 
         ARGameUIController ui;                   // the designer's controller found in the scene
@@ -24,6 +25,7 @@ namespace MemeHunter.Game
         bool busy;                               // a network call / photo is in progress
         float nextCheck;                         // distance is evaluated twice a second, not every frame
         double lastDistanceM = -1;
+        double lastAccuracyM;                    // GPS error radius of the last position (DEV label)
 
         // ---------- Automatic creation when the AR scene loads ----------
 
@@ -50,6 +52,7 @@ namespace MemeHunter.Game
 
         async void Start()
         {
+            TemplateUiCleanup.Run();                        // no tap-to-place cubes / template prompts in the hunt
             ui.CatchRequested.AddListener(OnCatchPressed);
 
             hunt = Session.ActiveHunt;                      // resume a hunt after restarting the app
@@ -71,12 +74,21 @@ namespace MemeHunter.Game
 
             if (!Geo.TryGetFix(out var fix)) return;
             lastDistanceM = Geo.DistanceMeters(fix.Lat, fix.Lng, hunt.Lat, hunt.Lng);
+            lastAccuracyM = fix.AccuracyM;
 
             // Close enough -> "Catch"; otherwise -> "Get closer".
-            // SetState fires UI updates, so call it only when the state really changes.
-            var wanted = lastDistanceM <= CatchRadiusM ? ARGameUIState.Catch : ARGameUIState.GetCloser;
+            // Entering Catch needs <= 30 m, leaving it needs > 50 m (hysteresis), so a jumping GPS does not
+            // switch the state back and forth. SetState fires UI updates, so call it only when the state really changes.
+            var inCatch = ui.CurrentState == ARGameUIState.Catch;
+            var wanted = lastDistanceM <= (inCatch ? LeaveRadiusM : CatchRadiusM) ? ARGameUIState.Catch : ARGameUIState.GetCloser;
             if (ui.CurrentState != wanted)
+            {
                 ui.SetState(wanted);
+                if (wanted == ARGameUIState.Catch)
+                    MemeSpawner.Show(hunt.Rarity);          // the meme appears in the camera view
+                else
+                    MemeSpawner.Hide();
+            }
         }
 
         // ---------- Start a hunt ----------
@@ -140,6 +152,7 @@ namespace MemeHunter.Game
             hunt = null;
             lastDistanceM = -1;
             Session.ClearHunt();
+            MemeSpawner.Hide();
             ui.SetState(ARGameUIState.Freeze);
         }
 
@@ -182,6 +195,7 @@ namespace MemeHunter.Game
                     Session.ClearHunt();
                     hunt = null;
                     lastDistanceM = -1;
+                    MemeSpawner.Hide();
                     ui.SetState(ARGameUIState.Freeze);
                     await RefreshPlayer();                    // new coin balance for Profile / HUD
                 }
@@ -223,7 +237,7 @@ namespace MemeHunter.Game
             DevGui.Scale();
 
             GUILayout.BeginArea(new Rect(8, 40, 190, 280));
-            GUILayout.Label(hunt == null ? "No active hunt" : $"Distance: {lastDistanceM:F0} m");
+            GUILayout.Label(hunt == null ? "No active hunt" : $"Distance: {lastDistanceM:F0} m (GPS ±{lastAccuracyM:F0} m)");
 
             GUI.enabled = !busy;
             if (hunt == null)
