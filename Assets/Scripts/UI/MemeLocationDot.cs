@@ -43,16 +43,6 @@ namespace MemeHunter.UI
                 Selected.Invoke(memeData);
         }
 
-        public static Color RarityColor(MemeRarity rarity)
-        {
-            return rarity switch
-            {
-                MemeRarity.Common => MemeHunterUiColors.CommonGrey,
-                MemeRarity.Uncommon => MemeHunterUiColors.UncommonGreen,
-                MemeRarity.Rare => MemeHunterUiColors.RarePurple,
-                MemeRarity.Legendary => MemeHunterUiColors.BrightGreen,
-                _ => MemeHunterUiColors.CommonGrey
-            };
-        }
+        public static Color RarityColor(MemeRarity rarity) => Rarity.ColorOf(rarity);
     }
 }

@@ -26,7 +26,7 @@ namespace MemeHunter.UI
             if (rarityValueText != null)
             {
                 rarityValueText.text = data.Rarity.ToString().ToUpperInvariant();
-                rarityValueText.color = RarityColor(data.Rarity);
+                rarityValueText.color = Rarity.ColorOf(data.Rarity);
             }
             if (priceValueText != null)
             {
@@ -43,16 +43,5 @@ namespace MemeHunter.UI
                 navigator.Show("Profile");
         }
 
-        static Color RarityColor(MemeRarity rarity)
-        {
-            return rarity switch
-            {
-                MemeRarity.Common => MemeHunterUiColors.CommonGrey,
-                MemeRarity.Uncommon => MemeHunterUiColors.UncommonGreen,
-                MemeRarity.Rare => MemeHunterUiColors.RarePurple,
-                MemeRarity.Legendary => MemeHunterUiColors.BrightGreen,
-                _ => MemeHunterUiColors.DarkNavy
-            };
-        }
     }
 }

@@ -1,31 +1,33 @@
 using MemeHunter.Dev;
 using MemeHunter.Net;
-using MemeHunter.UI;               // the designer's ARGameUIController / ARGameUIState
+using MemeHunter.UI;               // ARGameUIController marks the AR scene; AppNav
+using MemeHunter.UI.Hunt;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace MemeHunter.Game
 {
     /// <summary>
-    /// Game logic of one hunt: find nearest card -> claim -> walk (distance drives the AR UI) -> catch (photo + upload).
+    /// Game logic of one hunt: find nearest card -> claim -> walk (distance drives the HUD) -> catch (photo + upload).
     /// Lives only in the AR scene. It is created from code when a scene with the designer's ARGameUIController
-    /// loads, so no scene file is edited.
+    /// loads; the old overlay is hidden and replaced by the code-built HuntHud (Figma "Game" section).
     /// </summary>
     public sealed class HuntController : MonoBehaviour
     {
-        /// <summary>The designer's "Start hunt" button can call HuntController.Instance.StartHunt().</summary>
         public static HuntController Instance { get; private set; }
 
-        const double CatchRadiusM = 30.0;        // closer than this -> Catch is enabled
-        const double LeaveRadiusM = 50.0;        // Catch is left only beyond this (GPS jumps indoors, so no flicker at 30 m)
+        const double CatchRadiusM = 30.0;        // closer than this -> the meme appears, Catch can be used
+        const double LeaveRadiusM = 50.0;        // Near is left only beyond this (GPS jumps indoors, so no flicker at 30 m)
         const double MaxSearchRadiusM = 3000.0;  // cards farther than this are ignored (server returns all for now)
+        const double CatchAllowedM = CatchRadiusM * 2;   // GPS tolerance when the photo is actually sent
 
-        ARGameUIController ui;                   // the designer's controller found in the scene
+        HuntHud hud;
         ClaimDto hunt;                           // the claimed card (exact coordinates) or null
         bool busy;                               // a network call / photo is in progress
         float nextCheck;                         // distance is evaluated twice a second, not every frame
         double lastDistanceM = -1;
         double lastAccuracyM;                    // GPS error radius of the last position (DEV label)
+        bool near;
 
         // ---------- Automatic creation when the AR scene loads ----------
 
@@ -37,12 +39,12 @@ namespace MemeHunter.Game
 
         static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            // Only scenes that contain the designer's AR controller get a HuntController.
+            // Only the scene that contains the designer's AR controller is the hunt scene.
             var arUi = FindFirstObjectByType<ARGameUIController>();
             if (arUi == null) return;
 
-            var go = new GameObject("HuntController");
-            go.AddComponent<HuntController>().ui = arUi;   // assigned before Start() runs
+            arUi.transform.root.gameObject.SetActive(false);    // old overlay: replaced by HuntHud
+            new GameObject("HuntController").AddComponent<HuntController>();
         }
 
         // ---------- Lifecycle ----------
@@ -53,18 +55,27 @@ namespace MemeHunter.Game
         async void Start()
         {
             TemplateUiCleanup.Run();                        // no tap-to-place cubes / template prompts in the hunt
-            ui.CatchRequested.AddListener(OnCatchPressed);
+            hud = HuntHud.Create();
+            hud.CatchRequested += OnCatchPressed;
+            hud.StartHuntRequested += StartHunt;
 
             hunt = Session.ActiveHunt;                      // resume a hunt after restarting the app
             if (hunt == null)
             {
-                ui.SetState(ARGameUIState.Freeze);
+                hud.SetPhase(HuntPhase.NoHunt);
+                if (AppNav.StartHuntOnOpen)                 // opened from the map's Camera / "Start hunt" button
+                {
+                    AppNav.StartHuntOnOpen = false;
+                    StartHunt();
+                }
                 return;
             }
 
-            Toast.Show("Resuming your hunt...");
+            hud.SetRarity(hunt.Rarity);
+            hud.SetTarget(hunt.Lat, hunt.Lng);
+            hud.SetPhase(HuntPhase.Walking);
             if (!await Geo.StartAsync())
-                Toast.Show("Location is needed to continue the hunt.");
+                HuntErrors.LocationDenied();
         }
 
         void Update()
@@ -75,20 +86,23 @@ namespace MemeHunter.Game
             if (!Geo.TryGetFix(out var fix)) return;
             lastDistanceM = Geo.DistanceMeters(fix.Lat, fix.Lng, hunt.Lat, hunt.Lng);
             lastAccuracyM = fix.AccuracyM;
+            hud.SetDistance(lastDistanceM);
 
-            // Close enough -> "Catch"; otherwise -> "Get closer".
-            // Entering Catch needs <= 30 m, leaving it needs > 50 m (hysteresis), so a jumping GPS does not
-            // switch the state back and forth. SetState fires UI updates, so call it only when the state really changes.
-            var inCatch = ui.CurrentState == ARGameUIState.Catch;
-            var wanted = lastDistanceM <= (inCatch ? LeaveRadiusM : CatchRadiusM) ? ARGameUIState.Catch : ARGameUIState.GetCloser;
-            if (ui.CurrentState != wanted)
+            // Entering Near needs <= 30 m, leaving it needs > 50 m (hysteresis), so a jumping GPS does not
+            // switch back and forth. Only act when the state really changes.
+            var wantNear = lastDistanceM <= (near ? LeaveRadiusM : CatchRadiusM);
+            if (wantNear == near) return;
+            near = wantNear;
+            if (near)
             {
-                ui.SetState(wanted);
-                if (wanted == ARGameUIState.Catch)
-                    MemeSpawner.Show(hunt.Rarity);          // the meme appears in the camera view
-                else
-                    MemeSpawner.Hide();
+                MemeSpawner.Show(hunt.Rarity, hunt.CardId);              // the meme appears in the camera view
+                Handheld.Vibrate();                         // "it's here!"
             }
+            else
+            {
+                MemeSpawner.Hide();
+            }
+            hud.SetPhase(near ? HuntPhase.Near : HuntPhase.Walking);
         }
 
         // ---------- Start a hunt ----------
@@ -97,19 +111,22 @@ namespace MemeHunter.Game
         public async void StartHunt()
         {
             if (busy || hunt != null) return;
-            if (!Session.HasPlayer) { Toast.Show("Create a player first (DEV > Net / camera test > 2)."); return; }
 
             busy = true;
+            hud.SetPhase(HuntPhase.Searching);
+            var started = false;
             try
             {
+                if (!await EnsurePlayer()) return;
+
                 if (!await Geo.StartAsync())
                 {
-                    Toast.Show("Location is needed to find memes. Allow it in the phone settings.");
+                    HuntErrors.LocationDenied();
                     return;
                 }
                 if (!Geo.TryGetFix(out var fix))
                 {
-                    Toast.Show("Waiting for GPS... try again in a few seconds.");
+                    HuntErrors.NoGps();
                     return;
                 }
 
@@ -125,7 +142,7 @@ namespace MemeHunter.Game
                 }
                 if (best == null || bestDistance > MaxSearchRadiusM)
                 {
-                    Toast.Show("No memes around here yet.");
+                    UI.Kit.Popup.Show("No memes here yet", "There are no memes around you right now. New ones appear every day, so check again later!");
                     return;
                 }
 
@@ -133,30 +150,48 @@ namespace MemeHunter.Game
                 var claim = await Api.ClaimCard(best.Id, Session.PlayerId);
                 Session.SaveHunt(claim);
                 hunt = claim;
+                near = false;
                 nextCheck = 0f;                              // evaluate the distance on the next frame
-                Toast.Show($"A {claim.Rarity} meme is hiding nearby. Go find it!");
+                hud.SetRarity(claim.Rarity);
+                hud.SetTarget(claim.Lat, claim.Lng);
+                started = true;
             }
             catch (ApiException e)
             {
-                Toast.Show(e.Message);                       // e.g. someone else claimed it a second ago
+                HuntErrors.From(e);                          // e.g. offline, or someone claimed it a second ago
             }
             finally
             {
                 busy = false;
+                hud.SetPhase(started ? HuntPhase.Walking : HuntPhase.NoHunt);
             }
         }
 
-        /// <summary>Developer helper: forget the local hunt (the card stays claimed on the server).</summary>
+        /// <summary>Creates the server player from the onboarding nickname if this device has none yet.</summary>
+        static async Awaitable<bool> EnsurePlayer()
+        {
+            if (Session.HasPlayer) return true;
+            var nickname = PlayerPrefs.GetString("Nickname", string.Empty);
+            if (string.IsNullOrWhiteSpace(nickname)) nickname = "Hunter";
+            var player = await Api.CreatePlayer(nickname);   // ApiException is handled by the caller
+            Session.SavePlayer(player);
+            return true;
+        }
+
+        /// <summary>Forget the local hunt (the card stays claimed on the server).</summary>
         public void CancelHunt()
         {
             hunt = null;
+            near = false;
             lastDistanceM = -1;
             Session.ClearHunt();
             MemeSpawner.Hide();
-            ui.SetState(ARGameUIState.Freeze);
+            hud.SetDistance(-1);
+            hud.ClearTarget();
+            hud.SetPhase(HuntPhase.NoHunt);
         }
 
-        // ---------- Catch: photo -> upload ----------
+        // ---------- Catch: photo -> upload -> reveal ----------
 
         async void OnCatchPressed()
         {
@@ -165,53 +200,57 @@ namespace MemeHunter.Game
             // Position at the moment of pressing (before the photo is taken).
             if (!Geo.TryGetFix(out var fix))
             {
-                Toast.Show("No GPS position yet. Try again in a moment.");
+                HuntErrors.NoGps();
                 return;
             }
-            if (Geo.DistanceMeters(fix.Lat, fix.Lng, hunt.Lat, hunt.Lng) > CatchRadiusM * 2)
+            if (Geo.DistanceMeters(fix.Lat, fix.Lng, hunt.Lat, hunt.Lng) > CatchAllowedM)
             {
-                Toast.Show("You are too far from the meme.");
+                UI.Kit.Popup.Show("Too far away", "The meme slipped away! Walk a bit closer and try again.");
                 return;
             }
 
             busy = true;
             try
             {
-                // 1) Photo (the AR view on the phone, file picker in the Editor)
+                // 1) Photo of the AR view: every canvas and the meme itself are hidden for that frame.
                 var jpeg = await PhotoCapture.TakeAsync();
-                if (jpeg == null)
-                {
-                    Toast.Show("Photo cancelled.");
-                    return;                                   // the hunt stays active, the player can retry
-                }
+                if (jpeg == null) return;                    // cancelled: the hunt stays active, the player can retry
 
                 // 2) Upload (can take many seconds: the backend forwards it to doskaz.kz)
-                Toast.Show("Sending photo...", 60f);
+                hud.SetBusy("Catching the meme...");
                 var result = await Api.SubmitPhoto(Session.PlayerId, hunt.CardId, fix.Lat, fix.Lng, jpeg);
 
                 if (result.Status == "sent")
                 {
-                    Toast.Show($"Meme caught! +{result.Reward} coins");
+                    var caught = hunt;
                     Session.ClearHunt();
                     hunt = null;
+                    near = false;
                     lastDistanceM = -1;
                     MemeSpawner.Hide();
-                    ui.SetState(ARGameUIState.Freeze);
-                    await RefreshPlayer();                    // new coin balance for Profile / HUD
+                    hud.SetBusy(null);
+                    hud.SetDistance(-1);
+                    hud.ClearTarget();
+                    hud.SetPhase(HuntPhase.NoHunt);
+
+                    var progress = PlayerProgress.RecordCatch(caught.CardId, caught.Rarity);
+                    CatchReveal.Show(progress, caught.Rarity, result.Reward);
+                    await RefreshPlayer();                    // new coin balance for Profile
                 }
                 else
                 {
-                    // The backend could not hand it to doskaz (e.g. expired token). Nothing is lost on our side.
-                    Toast.Show("Could not send the photo right now. Please try again later.");
+                    // The backend could not hand it to doskaz (e.g. expired token): the catch fails, the hunt stays.
+                    HuntErrors.Generic("The meme got away this time. Please try catching it again in a moment.");
                 }
             }
             catch (ApiException e)
             {
-                Toast.Show(e.Message);                         // offline / timeout / server error: the hunt stays active
+                HuntErrors.From(e);                           // offline / timeout / server error: the hunt stays active
             }
             finally
             {
                 busy = false;
+                hud.SetBusy(null);
             }
         }
 
@@ -236,16 +275,11 @@ namespace MemeHunter.Game
             if (!ApiConfig.ShowDevTools || DevGui.Hidden) return;
             DevGui.Scale();
 
-            GUILayout.BeginArea(new Rect(8, 40, 190, 280));
+            GUILayout.BeginArea(new Rect(8, 140, 190, 280));
             GUILayout.Label(hunt == null ? "No active hunt" : $"Distance: {lastDistanceM:F0} m (GPS ±{lastAccuracyM:F0} m)");
 
             GUI.enabled = !busy;
-            if (hunt == null)
-            {
-                if (GUILayout.Button("[DEV] Hunt nearest", GUILayout.Height(34)))
-                    StartHunt();
-            }
-            else
+            if (hunt != null)
             {
                 if (GUILayout.Button("[DEV] Cancel hunt", GUILayout.Height(34)))
                     CancelHunt();

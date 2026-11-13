@@ -15,7 +15,7 @@ namespace MemeHunter.Game
         static MemeSpawnerView view;
 
         /// <summary>Places a meme of this rarity in front of the player. Does nothing if one is already there.</summary>
-        public static void Show(string rarity) => Ensure().Show(rarity);
+        public static void Show(string rarity, string cardId = null) => Ensure().Show(rarity, cardId);
 
         /// <summary>Removes the meme (hunt cancelled, caught, or the player walked away).</summary>
         public static void Hide()
@@ -27,6 +27,13 @@ namespace MemeHunter.Game
         public static void SetPhotoMode(bool on)
         {
             if (view != null) view.SetPhotoMode(on);
+        }
+
+        /// <summary>World position of the meme's centre while it is placed (for the HUD arrow and target frame).</summary>
+        public static bool TryGetCenter(out Vector3 center)
+        {
+            center = default;
+            return view != null && view.TryGetCenter(out center);
         }
 
         static MemeSpawnerView Ensure()
@@ -46,9 +53,16 @@ namespace MemeHunter.Game
     {
         const string Folder = "MemeBillboards";
 
-        /// <summary>A random picture for this rarity (or any picture if that rarity has none). null if there are none.</summary>
-        public static Texture2D PickFor(string rarity)
+        /// <summary>
+        /// The picture for this card: the card's own meme art (MemeCatalog), else a random picture for this rarity
+        /// from Resources/MemeBillboards. null if there is none (a coloured panel is shown instead).
+        /// </summary>
+        public static Texture2D PickFor(string rarity, string cardId = null)
         {
+            var meme = cardId != null ? MemeCatalog.ForCard(cardId, rarity) : null;
+            if (meme != null && meme.Artwork != null)
+                return meme.Artwork.texture;
+
             var key = string.IsNullOrWhiteSpace(rarity) ? "common" : rarity.Trim().ToLowerInvariant();
             var pool = Resources.LoadAll<Texture2D>(Folder + "/" + key);
             if (pool.Length == 0)
@@ -73,7 +87,7 @@ namespace MemeHunter.Game
         bool wanted;            // a meme is shown or being placed
         bool photoMode;
 
-        public async void Show(string rarity)
+        public async void Show(string rarity, string cardId)
         {
             if (wanted) return;
             wanted = true;
@@ -85,7 +99,7 @@ namespace MemeHunter.Game
             var spot = await FindSpotAsync(cam);
             if (myVersion != version || cam == null) return;     // hidden while we were looking for the floor
 
-            billboard = BuildBillboard(rarity, spot, cam.transform);
+            billboard = BuildBillboard(rarity, cardId, spot, cam.transform);
             billboard.SetActive(!photoMode);
         }
 
@@ -97,6 +111,14 @@ namespace MemeHunter.Game
             billboard = null;
             if (placeholderTexture != null) Destroy(placeholderTexture);
             placeholderTexture = null;
+        }
+
+        public bool TryGetCenter(out Vector3 center)
+        {
+            center = default;
+            if (billboard == null) return false;
+            center = billboard.transform.position + Vector3.up * (MaxHeightM * 0.4f);   // roughly the middle of the picture
+            return true;
         }
 
         public void SetPhotoMode(bool on)
@@ -171,7 +193,7 @@ namespace MemeHunter.Game
 
         // ---------- What to show ----------
 
-        GameObject BuildBillboard(string rarity, Vector3 spot, Transform cam)
+        GameObject BuildBillboard(string rarity, string cardId, Vector3 spot, Transform cam)
         {
             var root = new GameObject("MemeBillboard");
             root.transform.position = spot;                      // the bottom of the meme stands on this point
@@ -181,7 +203,7 @@ namespace MemeHunter.Game
             var sr = art.GetComponent<SpriteRenderer>();
             sr.sortingOrder = 5;
 
-            var texture = MemeImages.PickFor(rarity);
+            var texture = MemeImages.PickFor(rarity, cardId);
             if (texture != null)
             {
                 // Real picture, scaled to fit the 1 x 2 m box. Pivot is bottom-center.
@@ -223,10 +245,11 @@ namespace MemeHunter.Game
         {
             switch ((rarity ?? "").Trim().ToLowerInvariant())
             {
-                case "uncommon":  return new Color(0.20f, 0.60f, 0.35f, 0.95f);
-                case "rare":      return new Color(0.50f, 0.28f, 0.80f, 0.95f);
-                case "legendary": return new Color(0.90f, 0.65f, 0.10f, 0.95f);
-                default:          return new Color(0.40f, 0.42f, 0.50f, 0.95f);
+                // Same palette as the UI (MemeHunter.UI.Rarity), slightly see-through.
+                case "uncommon":  return new Color32(128, 239, 141, 242);
+                case "rare":      return new Color32(102, 44, 248, 242);
+                case "legendary": return new Color32(255, 196, 37, 242);
+                default:          return new Color32(194, 194, 194, 242);
             }
         }
     }

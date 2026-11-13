@@ -18,10 +18,14 @@ namespace MemeHunter.UI
                 button.onClick.AddListener(Navigate);
         }
 
+        /// <summary>When set, the button works as Back (previous screen, or the Map) instead of a fixed destination.</summary>
+        public bool GoesBack { get; set; }
+
         public void Navigate()
         {
-            if (navigator != null)
-                navigator.Show(destinationScreenId);
+            if (navigator == null) return;
+            if (GoesBack) navigator.Back();
+            else navigator.Show(destinationScreenId);
         }
     }
 }

@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afbf782175e74792b49b7d7d4f5d1954, type: 3}
+  m_Name: UiTheme
+  m_EditorClassIdentifier: 
+  displayFont: {fileID: 11400000, guid: 0cbc262e6bdb1d3af968f9eef07f8985, type: 2}
+  bodyFont: {fileID: 11400000, guid: ca736d5ec7fb25162b580a9b4c5709d7, type: 2}
+  bodyLight: {fileID: 11400000, guid: 5fd27c5ca670c1f1f95e8991e2c4e07c, type: 2}
+  bodyBold: {fileID: 11400000, guid: 47fef878e25a5fd51a13a2b69aa60630, type: 2}
+  pillButton: {fileID: 21300000, guid: 582f16c8571cb78249fbbb753e1608e3, type: 3}
+  acceptButton: {fileID: 21300000, guid: 77092e4f0ec99586aa49c1b9646b0ec6, type: 3}
+  discardButton: {fileID: 21300000, guid: 28509b386b2add3cfa48df15d3f09fb4, type: 3}
+  profileIcon: {fileID: 21300000, guid: cab3fb00dc0a9cd8f9f73883ef68f2d5, type: 3}
+  mapIcon: {fileID: 21300000, guid: 827873c0e03f22399add6b343d27c8b4, type: 3}
+  notificationsIcon: {fileID: 21300000, guid: 3c6503d0b0aeacaa696d674f5b5c9638, type: 3}
+  collectionIcon: {fileID: 21300000, guid: 7613cf5b27f7a3e5abc8d5e706f040c9, type: 3}
+  menuToggleIcon: {fileID: 21300000, guid: 31cd85cca98cae7d7906b7f7c6d6c686, type: 3}
+  donateIcon: {fileID: 21300000, guid: c2ed4d257e5349aab391ff5c193d81ac, type: 3}
+  cameraIcon: {fileID: 21300000, guid: 29858c354ebc42209fcb98b72b6ea112, type: 3}
+  plusIcon: {fileID: 21300000, guid: 9b58c827cbb10eaba94dd951485001e3, type: 3}
+  minusIcon: {fileID: 21300000, guid: 403898ad4e00520b59982f3983e365bd, type: 3}
+  showHideIcon: {fileID: 21300000, guid: d63ae262fca1411b0b7f06128b9d6f5b, type: 3}
+  coinIcon: {fileID: 21300000, guid: f0a79ce9b3734630aae96bc71825fd6b, type: 3}
+  rarityCommon: {fileID: 21300000, guid: ba5d909728b387cf48d8e394da3b0ba9, type: 3}
+  rarityUncommon: {fileID: 21300000, guid: 0a13096efdd8347f0bf3eb1d6a70682d, type: 3}
+  rarityRare: {fileID: 21300000, guid: ca4b4b4af37abb460b357e744c53ed66, type: 3}
+  rarityLegendary: {fileID: 21300000, guid: ff7388c2fe4ee880f813578ab5b58b09, type: 3}
+  rarityChosenOutline: {fileID: 21300000, guid: c6946fdbec7407b4ba41fb1c6cafd0cf, type: 3}
+  colorfulBackground: {fileID: 21300000, guid: ae41a689d1dfc126392c7eb842a4c01b, type: 3}

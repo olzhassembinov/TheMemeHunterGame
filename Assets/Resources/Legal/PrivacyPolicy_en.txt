@@ -1,0 +1,54 @@
+MEME HUNTER: TERMS OF USE AND PRIVACY POLICY
+Version 1 · Last updated: [DATE]
+
+Meme Hunter is a free location-based game made as a university project at [UNIVERSITY]. While you hunt memes, you also help map how accessible city places are for people with disabilities: the photos you take at catch spots are shared with the "Accessible Kazakhstan" map (doskaz.kz).
+
+Who is responsible for your data
+[TEAM NAMES], [UNIVERSITY], Kazakhstan.
+Contact: [EMAIL]
+
+1. Who can play
+You must be 16 or older. If you are younger than 16, you may play only with the consent of a parent or legal guardian.
+
+2. What we collect and why
+• Nickname: shown in the game and stored on our game server to identify your player.
+• Date of birth and city: stored only on your phone, to show your age and city on your profile.
+• Avatar choice, caught memes and XP: stored only on your phone.
+• Player ID: a random number our server gives your phone so the game can find your coins.
+• Location (GPS): sent to our server when the game looks for memes near you and when you catch one. It is used to place memes and to check that you are at the catch spot.
+• Photos: when you catch a meme, the phone takes a photo of the real place in front of the camera (the meme itself is not in the photo). The photo, its location and time are sent to our server and then to doskaz.kz.
+
+3. What happens to your photos
+Photos are used to describe how accessible a place is (for example ramps, entrances, elevators, tactile paving). They may be processed by automatic tools to prepare a short report and are checked by a doskaz.kz expert before being added to the public accessibility map. Approved photos may become publicly visible on doskaz.kz.
+Please do not photograph people's faces, car number plates, documents or anything private. Point the camera at the place, not at people.
+
+4. Who we share data with
+• doskaz.kz ("Accessible Kazakhstan"): photos, their location and time.
+• Our server hosting provider, which stores the game server data for us.
+• The map service (OpenStreetMap, or Mapbox if enabled): when the map loads, your phone downloads map pictures for the area you are looking at, which tells the service your IP address and that area.
+We do not sell your data and the app contains no advertising.
+
+5. How long we keep it
+Data on your phone stays until you delete the app. Your player record and photos on our server are kept [RETENTION PERIOD] or until you ask us to delete them. Photos already published on doskaz.kz are kept under the rules of doskaz.kz.
+
+6. Your rights
+You can ask us what data we hold about you, ask us to correct or delete it, and withdraw your consent at any time by writing to [EMAIL]. Withdrawing consent stops future collection; you can also simply stop playing and delete the app.
+
+7. Permissions on your phone
+• Location: needed to find memes and catch them.
+• Camera: needed for the AR view and to take the catch photo.
+You can turn them off in the phone settings at any time, but the game will not work without them.
+
+8. Safety
+Always watch your surroundings. Do not play while driving or crossing the road, and do not enter private property, closed areas or dangerous places to catch a meme.
+
+9. Security
+Data is sent to our server over an encrypted connection (HTTPS). No system is perfectly secure, but we take reasonable steps to protect your data.
+
+10. Legal basis
+We process your personal data on the basis of your consent, in line with the Law of the Republic of Kazakhstan "On Personal Data and Their Protection".
+
+11. Changes
+If we change these terms, we will show them in the app again and ask for your consent before you continue.
+
+By ticking "I accept" you confirm that you are 16 or older (or have your parent's or guardian's consent), that you have read these terms, and that you agree to the processing of your data as described above.

@@ -15,6 +15,6 @@ MonoBehaviour:
   memeId: GIGACHAD
   displayName: GIGACHAD
   rarity: 1
-  price: 0
+  price: 34
   description: 
-  artwork: {fileID: 0}
+  artwork: {fileID: 21300000, guid: 559f86eeb145463d91385a53e1a0272c, type: 3}

@@ -25,6 +25,12 @@ namespace MemeHunter.Net
         /// </summary>
         public static readonly bool UseNativeCamera = false;
 
+        /// <summary>
+        /// Donation page opened by the Donate screen ("?amount=N" is appended). Empty = donations are not open yet:
+        /// the screen then says so instead of pretending a payment happened.
+        /// </summary>
+        public const string DonateUrl = "";
+
         public const int DefaultTimeoutSeconds = 15;  // normal calls
         public const int SubmitTimeoutSeconds = 60;   // photo upload: backend waits for doskaz.kz
 

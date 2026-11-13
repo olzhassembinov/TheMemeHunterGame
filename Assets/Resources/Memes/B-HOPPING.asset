@@ -21,4 +21,4 @@ MonoBehaviour:
     that air acceleration and jump-chaining bypassed ground speed caps. This bug
     was constantly used by a legendary player Phoon, who was both accused of being
     cheater and being professional CS source player.
-  artwork: {fileID: 0}
+  artwork: {fileID: 21300000, guid: 1ffd77c6aff84330923ef31713f0d40c, type: 3}

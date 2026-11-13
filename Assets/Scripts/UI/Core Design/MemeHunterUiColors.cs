@@ -13,6 +13,8 @@ namespace MemeHunter.UI
         public static readonly Color CommonGrey = Hex("C2C2C2");
         public static readonly Color RarePurple = Hex("662CF8");
         public static readonly Color FormBlue = Hex("6BA6E4");
+        public static readonly Color LegendaryGold = Hex("FFC425");   // Legendary is gold (decision 2026-11-12, overrides Figma's green)
+        public static readonly Color Lime = Hex("D4FF8A");            // AR reticle / state text (Figma)
 
         static Color Hex(string value)
         {

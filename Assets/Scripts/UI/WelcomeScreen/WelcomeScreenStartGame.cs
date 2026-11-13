@@ -30,8 +30,8 @@ public class WelcomeScreenStartGame : MonoBehaviour
         PlayerPrefs.SetInt("Year", intYear);
         Debug.Log("It worked!");
 
-        // now teleport the player somewhere. . .
-        SceneManager.LoadScene("Profile");
+        // Terms + privacy policy consent and phone permissions, then the game (the Map).
+        MemeHunter.UI.Onboarding.ConsentFlow.Run(() => SceneManager.LoadScene("Profile"));
     }
 
 }

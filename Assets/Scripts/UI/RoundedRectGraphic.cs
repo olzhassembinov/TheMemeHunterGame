@@ -8,6 +8,13 @@ namespace MemeHunter.UI
         [SerializeField, Min(0f)] float cornerRadius = 12f;
         [SerializeField, Range(2, 16)] int cornerSegments = 6;
 
+        /// <summary>Corner radius in canvas units; a value of half the size gives a circle.</summary>
+        public float CornerRadius
+        {
+            get => cornerRadius;
+            set { cornerRadius = Mathf.Max(0f, value); cornerSegments = Mathf.Max(cornerSegments, 10); SetVerticesDirty(); }
+        }
+
         protected override void OnPopulateMesh(VertexHelper vertexHelper)
         {
             vertexHelper.Clear();
