@@ -22,6 +22,7 @@ namespace MemeHunter.UI.Onboarding
 
         public static void Run(Action onDone)
         {
+            if (MemeHunter.Net.ApiConfig.SkipConsentScreens) { onDone?.Invoke(); return; }   // testing: straight into the game
             if (open != null) return;
             if (Consent.Accepted) { ShowPermissions(onDone); return; }
             ShowTerms(() => ShowPermissions(onDone));

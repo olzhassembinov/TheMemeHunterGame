@@ -20,6 +20,8 @@ namespace MemeHunter.UI.Hunt
     {
         const float RefreshSeconds = 15f;
         const double NearbyPopupM = 120.0;      // server positions are rounded to ~100 m, so "nearby" is generous
+        /// <summary>false: the navigation column (Camera, Profile, Notifications, Collections, Donate, MH) is built but kept inactive. The map tools stay.</summary>
+        const bool NavigationEnabled = false;
 
         TileMapLayer map;
         RectTransform dotLayer;
@@ -273,6 +275,7 @@ namespace MemeHunter.UI.Hunt
             AddButton(navGroup, "Collections", theme?.collectionIcon, () => AppNav.OpenScreen(AppNav.Collections));
             AddButton(navGroup, "Donate", theme?.donateIcon, () => DonateScreen.Open());
             AddButton(navGroup, "Menu Toggle", theme?.menuToggleIcon, ToggleNav);
+            navGroup.gameObject.SetActive(NavigationEnabled);
         }
 
         void ToggleNav()

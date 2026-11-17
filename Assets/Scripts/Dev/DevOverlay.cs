@@ -5,14 +5,11 @@ using UnityEngine.SceneManagement;
 namespace MemeHunter.Dev
 {
     /// <summary>
-    /// Floating "DEV" button in the top-right corner: jump to a scene, open the net/camera test panel,
+    /// Floating "DEV" button in the top-right corner: jump to a scene or page, open the net/camera test panel,
     /// or wipe saved data. Created from code at app start, so no scene is edited.
     /// </summary>
     public sealed class DevOverlay : MonoBehaviour
     {
-        // Scene names exactly as in Build Settings.
-        static readonly string[] Scenes = { "WelcomeScreen", "Profile", "SampleScene" };
-
         bool open;
         NetTestPanel testPanel;
 
@@ -47,15 +44,11 @@ namespace MemeHunter.Dev
                 testPanel.Visible = !testPanel.Visible;
                 open = false;
             }
-            foreach (var sceneName in Scenes)
-            {
-                if (GUILayout.Button(sceneName, GUILayout.Height(30)))
-                {
-                    open = false;
-                    testPanel.Visible = false;
-                    SceneManager.LoadScene(sceneName);
-                }
-            }
+            // Scenes and pages. "Profile" and "Map" are pages of the Profile scene (it opens on the Map by default).
+            if (Jump("WelcomeScreen")) SceneManager.LoadScene("WelcomeScreen");
+            if (Jump("Profile")) UI.AppNav.OpenScreen(UI.AppNav.Profile);
+            if (Jump("Map")) UI.AppNav.OpenScreen(UI.AppNav.Map);
+            if (Jump("SampleScene (camera)")) UI.AppNav.OpenHunt(startHunting: false);
             if (GUILayout.Button("Clear saved data", GUILayout.Height(30)))
             {
                 PlayerPrefs.DeleteAll();               // forget player, profile, server address override
@@ -64,6 +57,16 @@ namespace MemeHunter.Dev
                 Toast.Show("Saved data cleared");
             }
             GUILayout.EndArea();
+        }
+
+        /// <summary>A jump button: closes the menu, the test panel and the avatar picker when pressed.</summary>
+        bool Jump(string label)
+        {
+            if (!GUILayout.Button(label, GUILayout.Height(30))) return false;
+            open = false;
+            testPanel.Visible = false;
+            UI.Avatars.AvatarPicker.Close();
+            return true;
         }
     }
 }

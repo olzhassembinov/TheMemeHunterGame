@@ -23,9 +23,23 @@ namespace MemeHunter.UI
         /// <summary>True when the hunt scene was opened with the intention to start hunting right away.</summary>
         public static bool StartHuntOnOpen { get; set; }
 
+        /// <summary>
+        /// The navigator that belongs to this scene. The Welcome canvas survives scene changes (DontDestroyOnLoad)
+        /// with a navigator of its own that knows only the Welcome screen, so "the first navigator found" is not enough.
+        /// </summary>
+        public static ScreenNavigator NavigatorIn(Scene scene)
+        {
+            foreach (var navigator in Object.FindObjectsByType<ScreenNavigator>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (navigator.gameObject.scene == scene) return navigator;
+            return null;
+        }
+
+        /// <summary>The navigator of the scene on screen, or null (Welcome scene, AR scene).</summary>
+        public static ScreenNavigator ActiveNavigator => NavigatorIn(SceneManager.GetActiveScene());
+
         public static void OpenScreen(string screenId)
         {
-            var navigator = Object.FindFirstObjectByType<ScreenNavigator>();
+            var navigator = ActiveNavigator;
             if (navigator != null && navigator.Show(screenId))
                 return;
 
@@ -36,8 +50,8 @@ namespace MemeHunter.UI
         /// <summary>The close (X) button everywhere: previous screen, or the Map if there is none.</summary>
         public static void Back()
         {
-            var navigator = Object.FindFirstObjectByType<ScreenNavigator>();
-            if (navigator != null) { navigator.Back(); return; }
+            var navigator = ActiveNavigator;
+            if (navigator != null && navigator.Back()) return;
             PendingScreen = Map;
             SceneManager.LoadScene(MainScene);
         }

@@ -167,6 +167,22 @@ namespace MemeHunter.Game
             }
         }
 
+        /// <summary>DEV: places a local test meme ~80 m north of the player and starts hunting it (no server).</summary>
+        public void StartTestHunt(string rarity = "legendary")
+        {
+            if (busy || !Geo.TryGetFix(out var fix)) return;
+            if (hunt != null) CancelHunt();
+            hunt = TestMeme.SpawnNear(fix.Lat, fix.Lng, rarity);
+            near = false;
+            nextCheck = 0f;
+            hud.SetRarity(hunt.Rarity);
+            hud.SetTarget(hunt.Lat, hunt.Lng);
+            hud.SetPhase(HuntPhase.Walking);
+        }
+
+        /// <summary>Same as tapping the Catch button (used by the editor simulation).</summary>
+        public void Catch() => OnCatchPressed();
+
         /// <summary>Creates the server player from the onboarding nickname if this device has none yet.</summary>
         static async Awaitable<bool> EnsurePlayer()
         {
@@ -206,6 +222,17 @@ namespace MemeHunter.Game
             if (Geo.DistanceMeters(fix.Lat, fix.Lng, hunt.Lat, hunt.Lng) > CatchAllowedM)
             {
                 UI.Kit.Popup.Show("Too far away", "The meme slipped away! Walk a bit closer and try again.");
+                return;
+            }
+
+            if (TestMeme.IsTest(hunt.CardId))
+            {
+                // Local test meme: no photo, no upload. Nothing leaves the phone.
+                ShutterFlash.Play();
+                var caught = hunt;
+                CancelHunt();
+                var progress = PlayerProgress.RecordCatch(caught.CardId, caught.Rarity);
+                CatchReveal.Show(progress, caught.Rarity, TestMeme.Reward(caught.Rarity));
                 return;
             }
 
@@ -268,6 +295,16 @@ namespace MemeHunter.Game
             }
         }
 
+        /// <summary>Editor only: moves the fake GPS position this many meters toward the meme.</summary>
+        public void WalkToward(double meters)
+        {
+            if (hunt == null) return;
+            var d = Geo.DistanceMeters(Geo.FakeLat, Geo.FakeLng, hunt.Lat, hunt.Lng);
+            var t = d <= meters ? 1.0 : meters / d;
+            Geo.FakeLat += (hunt.Lat - Geo.FakeLat) * t;
+            Geo.FakeLng += (hunt.Lng - Geo.FakeLng) * t;
+        }
+
         // ---------- Developer panel (hidden when ApiConfig.ShowDevTools = false) ----------
 
         void OnGUI()
@@ -279,6 +316,8 @@ namespace MemeHunter.Game
             GUILayout.Label(hunt == null ? "No active hunt" : $"Distance: {lastDistanceM:F0} m (GPS ±{lastAccuracyM:F0} m)");
 
             GUI.enabled = !busy;
+            if (hunt == null && GUILayout.Button("[DEV] Test meme nearby", GUILayout.Height(34)))
+                StartTestHunt();
             if (hunt != null)
             {
                 if (GUILayout.Button("[DEV] Cancel hunt", GUILayout.Height(34)))
@@ -287,6 +326,8 @@ namespace MemeHunter.Game
                 // The Editor has no GPS: move the fake position instead of walking.
                 if (GUILayout.Button("[DEV] Teleport to card", GUILayout.Height(34)))
                 { Geo.FakeLat = hunt.Lat; Geo.FakeLng = hunt.Lng; }
+                if (GUILayout.Button("[DEV] Walk 10 m closer", GUILayout.Height(34)))
+                    WalkToward(10.0);
                 if (GUILayout.Button("[DEV] Move 100 m away", GUILayout.Height(34)))
                 { Geo.FakeLat = hunt.Lat + 0.0009; Geo.FakeLng = hunt.Lng; }   // 0.0009 deg latitude ~ 100 m
 #endif

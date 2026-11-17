@@ -26,6 +26,8 @@ namespace MemeHunter.UI.Hunt
         const float SteadyDegreesPerSecond = 22f;   // slower camera rotation than this counts as "steady"
         const float SteadySeconds = 0.35f;          // ... for at least this long
         const float FrameHalfSize = 0.2f;           // viewport half-size of the target frame (centre ± 0.2)
+        /// <summary>false: the round side-menu buttons (Profile, Map, Notifications, Collections, Donate, MH) are built but kept inactive.</summary>
+        const bool SideMenuEnabled = false;
 
         public event Action CatchRequested;
         public event Action StartHuntRequested;
@@ -292,6 +294,7 @@ namespace MemeHunter.UI.Hunt
             AddMenuButton("Collections", theme?.collectionIcon, () => AppNav.OpenScreen(AppNav.Collections));
             AddMenuButton("Donate", theme?.donateIcon, () => DonateScreen.Open());
             AddMenuButton("Menu Toggle", theme?.menuToggleIcon, () => { menuOpenedByPlayer = true; SetMenuOpen(!menuOpen); });
+            sideMenu.gameObject.SetActive(SideMenuEnabled);
         }
 
         void AddMenuButton(string name, Sprite icon, Action onClick)

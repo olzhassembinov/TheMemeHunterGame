@@ -93,10 +93,24 @@ namespace MemeHunter.UI.Profile
             Session.PlayerChanged -= OnPlayerChanged;
             Session.PlayerChanged += OnPlayerChanged;
             if (Application.isPlaying) RefreshCoins();
-            if (Application.isPlaying && !AvatarCatalog.HasChoice) AvatarPicker.Open(() => { if (this != null && isActiveAndEnabled) Rebuild(); });
+            if (Application.isPlaying && !AvatarCatalog.HasChoice) StartCoroutine(AskForAvatarWhenShown());
         }
 
-        void OnDisable() => Session.PlayerChanged -= OnPlayerChanged;
+        void OnDisable()
+        {
+            Session.PlayerChanged -= OnPlayerChanged;
+            AvatarPicker.Close();                                           // leaving Profile: no picker over another page
+        }
+
+        /// <summary>
+        /// First visit: ask for a face, but only once Profile is really on screen. When the scene loads, every page is
+        /// briefly active before the navigator picks one; hiding Profile in that frame stops this coroutine.
+        /// </summary>
+        System.Collections.IEnumerator AskForAvatarWhenShown()
+        {
+            yield return null;
+            if (isActiveAndEnabled && !AvatarCatalog.HasChoice) AvatarPicker.Open(Rebuild);
+        }
         void OnPlayerChanged(PlayerDto _) { if (coinsText != null) coinsText.text = Coins(); }
 
         void Rebuild()

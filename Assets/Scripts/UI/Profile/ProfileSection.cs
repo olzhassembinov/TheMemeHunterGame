@@ -17,11 +17,13 @@ namespace MemeHunter.UI.Profile
         public const string MemeCardId = "MemeCard";
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
-        static void Hook() => SceneManager.sceneLoaded += (_, _) => Install();
+        static void Hook() => SceneManager.sceneLoaded += (scene, _) => Install(scene);
 
-        static void Install()
+        static void Install(Scene scene)
         {
-            var navigator = Object.FindFirstObjectByType<ScreenNavigator>(FindObjectsInactive.Include);
+            // Only the main scene's own navigator: the Welcome canvas persists into every scene with a navigator
+            // that must keep showing the Welcome screen.
+            var navigator = AppNav.NavigatorIn(scene);
             if (navigator == null) return;
             navigator.SetInitialScreen(AppNav.Map);                            // the Map is the main screen
 
