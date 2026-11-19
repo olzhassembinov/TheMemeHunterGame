@@ -49,6 +49,7 @@ namespace MemeHunter.UI.Hunt
         TextMeshProUGUI actionLabel;
         Image actionImage;
         RectTransform sideMenu;
+        Button backButton;
         CompassWidget compass;
         bool hasTarget;
         double targetLat, targetLng;
@@ -177,16 +178,17 @@ namespace MemeHunter.UI.Hunt
             actionImage.color = enabled ? Color.white : new Color(1f, 1f, 1f, 0.45f);
             actionLabel.color = enabled ? Color.white : new Color(1f, 1f, 1f, 0.7f);
             actionButton.gameObject.SetActive(phase != HuntPhase.Searching && phase != HuntPhase.Walking);
+            if (backButton != null) backButton.interactable = busyMessage == null && phase != HuntPhase.Searching;
         }
 
         string NarrativeText()
         {
             if (busyMessage != null) return busyMessage;
-            var name = string.IsNullOrEmpty(rarity) ? "meme" : rarity.ToLowerInvariant() + " meme";
+            var name = Rarity.MemeWithArticle(rarity, true);
             switch (phase)
             {
                 case HuntPhase.Searching: return "Looking for memes nearby...";
-                case HuntPhase.Walking: return $"A {name} is hiding nearby. Get closer!";
+                case HuntPhase.Walking: return $"{name} is hiding nearby. Get closer!";
                 case HuntPhase.Near:
                     if (!MemeInFrame) return "It's here! Turn around and follow the arrow.";
                     if (!IsSteady) return "Hold still...";
@@ -295,6 +297,11 @@ namespace MemeHunter.UI.Hunt
             AddMenuButton("Donate", theme?.donateIcon, () => DonateScreen.Open());
             AddMenuButton("Menu Toggle", theme?.menuToggleIcon, () => { menuOpenedByPlayer = true; SetMenuOpen(!menuOpen); });
             sideMenu.gameObject.SetActive(SideMenuEnabled);
+
+            // Back to the map (bottom-left): the way out of the AR screen while the side menu is switched off.
+            backButton = Ui.IconButton("Back To Map", canvas, theme?.mapIcon, () => AppNav.OpenScreen(AppNav.Map));
+            ((RectTransform)backButton.transform).Place(new Vector2(0f, 0f), new Vector2(14f, 40f), new Vector2(62f, 62f));
+            backButton.gameObject.SetActive(!SideMenuEnabled);
         }
 
         void AddMenuButton(string name, Sprite icon, Action onClick)

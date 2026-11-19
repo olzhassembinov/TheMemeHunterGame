@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using MemeHunter.Dev;
 using MemeHunter.Net;
 using MemeHunter.UI;               // ARGameUIController marks the AR scene; AppNav
@@ -20,6 +22,7 @@ namespace MemeHunter.Game
         const double LeaveRadiusM = 50.0;        // Near is left only beyond this (GPS jumps indoors, so no flicker at 30 m)
         const double MaxSearchRadiusM = 3000.0;  // cards farther than this are ignored (server returns all for now)
         const double CatchAllowedM = CatchRadiusM * 2;   // GPS tolerance when the photo is actually sent
+        const int MaxClaimAttempts = 5;                  // cards tried one after another when other hunters take them first
 
         HuntHud hud;
         ClaimDto hunt;                           // the claimed card (exact coordinates) or null
@@ -133,22 +136,39 @@ namespace MemeHunter.Game
                 // 1) Ask the server which cards exist and pick the nearest one
                 //    (the server rounds positions to ~100 m, good enough for choosing).
                 var cards = await Api.GetNearby(fix.Lat, fix.Lng);
-                NearbyCardDto best = null;
-                var bestDistance = double.MaxValue;
+                var candidates = new List<(NearbyCardDto card, double distance)>();
                 foreach (var card in cards)
                 {
                     var d = Geo.DistanceMeters(fix.Lat, fix.Lng, card.ApproxLat, card.ApproxLng);
-                    if (d < bestDistance) { best = card; bestDistance = d; }
+                    if (d <= MaxSearchRadiusM) candidates.Add((card, d));
                 }
-                if (best == null || bestDistance > MaxSearchRadiusM)
+                if (candidates.Count == 0)
                 {
                     UI.Kit.Popup.Show("No memes here yet", "There are no memes around you right now. New ones appear every day, so check again later!");
                     return;
                 }
+                candidates.Sort((a, b) => a.distance.CompareTo(b.distance));   // cards at the same spot come in random order
 
-                // 2) Claim it: the answer contains the EXACT place. Save it at once (survives an app restart).
-                var claim = await Api.ClaimCard(best.Id, Session.PlayerId);
-                Session.SaveHunt(claim);
+                // 2) Claim the nearest one: the answer contains the EXACT place. If another hunter took it a moment
+                //    earlier (the server answers 400), try the next nearest card.
+                ClaimDto claim = null;
+                for (var i = 0; i < candidates.Count && i < MaxClaimAttempts && claim == null; i++)
+                {
+                    try
+                    {
+                        claim = await Api.ClaimCard(candidates[i].card.Id, Session.PlayerId);
+                    }
+                    catch (ApiException e) when (e.StatusCode == 400)
+                    {
+                        // taken or not available: next card
+                    }
+                }
+                if (claim == null)
+                {
+                    UI.Kit.Popup.Show("Too late!", "The memes around you were just caught by other hunters. Try again in a moment!");
+                    return;
+                }
+                Session.SaveHunt(claim);                     // survives an app restart
                 hunt = claim;
                 near = false;
                 nextCheck = 0f;                              // evaluate the distance on the next frame
@@ -186,7 +206,18 @@ namespace MemeHunter.Game
         /// <summary>Creates the server player from the onboarding nickname if this device has none yet.</summary>
         static async Awaitable<bool> EnsurePlayer()
         {
-            if (Session.HasPlayer) return true;
+            if (Session.HasPlayer)
+            {
+                try
+                {
+                    Session.SetPlayer(await Api.GetPlayer(Session.PlayerId));   // also refreshes the coin balance
+                    return true;
+                }
+                catch (ApiException e) when (e.StatusCode == 404)
+                {
+                    Session.Clear();     // the server does not know this player any more (database reset): register again
+                }
+            }
             var nickname = PlayerPrefs.GetString("Nickname", string.Empty);
             if (string.IsNullOrWhiteSpace(nickname)) nickname = "Hunter";
             var player = await Api.CreatePlayer(nickname);   // ApiException is handled by the caller
@@ -261,7 +292,7 @@ namespace MemeHunter.Game
                     hud.SetPhase(HuntPhase.NoHunt);
 
                     var progress = PlayerProgress.RecordCatch(caught.CardId, caught.Rarity);
-                    CatchReveal.Show(progress, caught.Rarity, result.Reward);
+                    CatchReveal.Show(progress, caught.Rarity, result.Reward, GoToMap);
                     await RefreshPlayer();                    // new coin balance for Profile
                 }
                 else
@@ -272,14 +303,27 @@ namespace MemeHunter.Game
             }
             catch (ApiException e)
             {
-                HuntErrors.From(e);                           // offline / timeout / server error: the hunt stays active
+                if (e.StatusCode == 404)
+                {
+                    // The server does not know this player or card any more (database reset): this hunt can never finish.
+                    if (e.Message.IndexOf("player", StringComparison.OrdinalIgnoreCase) >= 0) Session.Clear();
+                    CancelHunt();
+                    HuntErrors.Generic("This meme is not available any more. Start a new hunt!");
+                }
+                else
+                {
+                    HuntErrors.From(e);                       // offline / timeout / server error: the hunt stays active
+                }
             }
             finally
             {
                 busy = false;
-                hud.SetBusy(null);
+                if (hud != null) hud.SetBusy(null);           // the player may already have left the AR screen
             }
         }
+
+        /// <summary>After the "Meme caught!" popup the player lands on the map again.</summary>
+        static void GoToMap() => AppNav.OpenScreen(AppNav.Map);
 
         /// <summary>Re-reads the player so the new coin balance is available everywhere (Session.PlayerChanged).</summary>
         static async Awaitable RefreshPlayer()

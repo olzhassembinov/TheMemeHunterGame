@@ -9,6 +9,7 @@ namespace MemeHunter.Game
     public static class PhotoCapture
     {
         const int JpegQuality = 85;
+        const int MaxJpegBytes = 9 * 1024 * 1024;   // the server accepts at most 10 MB per request
 
         /// <summary>
         /// The photo for the hunt.
@@ -64,6 +65,7 @@ namespace MemeHunter.Game
 
             ShutterFlash.Play();
             var jpeg = shot.EncodeToJPG(JpegQuality);
+            if (jpeg.Length > MaxJpegBytes) jpeg = shot.EncodeToJPG(60);   // very large screen: compress harder
             Object.Destroy(shot);
             return jpeg;
         }

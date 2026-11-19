@@ -16,8 +16,15 @@ namespace MemeHunter.Net
         // PlayerPrefs key where the DEV panel stores a temporary address.
         const string OverrideKey = "ApiBaseUrl";
 
-        /// <summary>Set to false for the final demo build: hides all developer buttons.</summary>
-        public const bool ShowDevTools = true;
+        /// <summary>
+        /// Developer buttons (DEV menu, test meme, teleport, net test panel). On only inside the Unity Editor: no phone
+        /// build (beta, demo) shows them. To try them on a phone, change the #else value to true for that build.
+        /// </summary>
+#if UNITY_EDITOR
+        public static readonly bool ShowDevTools = true;
+#else
+        public static readonly bool ShowDevTools = false;
+#endif
 
         /// <summary>
         /// Testing: true skips the Terms of use and the Allow geolocation &amp; camera screens (the phone still asks for
@@ -38,7 +45,7 @@ namespace MemeHunter.Net
         public const string DonateUrl = "";
 
         public const int DefaultTimeoutSeconds = 15;  // normal calls
-        public const int SubmitTimeoutSeconds = 60;   // photo upload: backend waits for doskaz.kz
+        public const int SubmitTimeoutSeconds = 60;   // photo upload: can be slow on a weak mobile network
 
         /// <summary>Address without a trailing slash, e.g. http://192.168.0.12:8000</summary>
         public static string BaseUrl

@@ -59,7 +59,7 @@ namespace MemeHunter.UI.Profile
             name.fontSizeMax = 50f;
             name.rectTransform.At(58f, 572f, 383f, 56f);
 
-            Row(root, "Rarity:", meme.Rarity.ToString().ToUpperInvariant(), 636f, color);
+            Row(root, "Rarity:", Rarity.Name(meme.Rarity).ToUpperInvariant(), 636f, color);
             Row(root, "Price:", meme.Price + "$", 671f, color);
 
             // Description: Anuphan 18, first line indented like the Figma text.

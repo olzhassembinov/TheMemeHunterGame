@@ -47,7 +47,7 @@ namespace MemeHunter.UI.Profile
             var color = Rarity.ColorOf(meme.Rarity);
             Label(root, "Rarity:", 206f);
             Label(root, "Price:", 230f);
-            Value(root, meme.Rarity.ToString().ToUpperInvariant(), 206f, color);
+            Value(root, Rarity.Name(meme.Rarity).ToUpperInvariant(), 206f, color);
             Value(root, owned ? meme.Price + "$" : "?", 230f, color);
 
             var button = bg.gameObject.AddComponent<Button>();

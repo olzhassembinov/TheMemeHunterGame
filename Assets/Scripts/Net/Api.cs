@@ -78,7 +78,7 @@ namespace MemeHunter.Net
             form.AddField("lng", Num(lng));
             form.AddBinaryData("photo", jpeg, "photo.jpg", "image/jpeg");
             var req = UnityWebRequest.Post(ApiConfig.BaseUrl + "/submissions", form);
-            // Long timeout: the backend answers only after doskaz.kz answered.
+            // Long timeout: a photo upload on a weak mobile network can take a while.
             return await Send<SubmissionResultDto>(req, ApiConfig.SubmitTimeoutSeconds);
         }
 

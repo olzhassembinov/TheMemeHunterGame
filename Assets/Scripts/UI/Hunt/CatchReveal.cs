@@ -47,7 +47,7 @@ namespace MemeHunter.UI.Hunt
             title.enableAutoSizing = true;
             title.fontSizeMin = 16f;
             title.fontSizeMax = 26f;
-            var rarityText = Ui.Text("Rarity", front, rarity.ToString().ToUpperInvariant(), 18f, color, display: true);
+            var rarityText = Ui.Text("Rarity", front, Rarity.Name(rarity).ToUpperInvariant(), 18f, color, display: true);
             rarityText.characterSpacing = 18f;
             rarityText.rectTransform.Place(new Vector2(0.5f, 0f), new Vector2(0f, 18f), new Vector2(CardWidth - 20f, 30f));
 

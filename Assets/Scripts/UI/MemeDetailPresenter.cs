@@ -25,7 +25,7 @@ namespace MemeHunter.UI
                 memeCard.Bind(data);
             if (rarityValueText != null)
             {
-                rarityValueText.text = data.Rarity.ToString().ToUpperInvariant();
+                rarityValueText.text = Rarity.Name(data.Rarity).ToUpperInvariant();
                 rarityValueText.color = Rarity.ColorOf(data.Rarity);
             }
             if (priceValueText != null)

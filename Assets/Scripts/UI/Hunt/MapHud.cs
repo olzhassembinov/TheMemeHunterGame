@@ -22,6 +22,8 @@ namespace MemeHunter.UI.Hunt
         const double NearbyPopupM = 120.0;      // server positions are rounded to ~100 m, so "nearby" is generous
         /// <summary>false: the navigation column (Camera, Profile, Notifications, Collections, Donate, MH) is built but kept inactive. The map tools stay.</summary>
         const bool NavigationEnabled = false;
+        /// <summary>true: even with the navigation column hidden, the Camera button (and its glow) stays: it starts the hunt.</summary>
+        const bool CameraButtonEnabled = true;
 
         TileMapLayer map;
         RectTransform dotLayer;
@@ -152,7 +154,7 @@ namespace MemeHunter.UI.Hunt
         void ShowNearbyPopup(string rarity)
         {
             Handheld.Vibrate();
-            var popup = Popup.Create("Meme nearby!", $"A {rarity.ToLowerInvariant()} meme is hiding close to you. Open the camera and catch it!", 70f);
+            var popup = Popup.Create("Meme nearby!", $"{Rarity.MemeWithArticle(rarity, true)} is hiding close to you. Open the camera and catch it!", 70f);
             var start = Ui.PillButton("Start hunt", popup.Content, "Start hunt", () =>
             {
                 popup.Close();
@@ -275,7 +277,16 @@ namespace MemeHunter.UI.Hunt
             AddButton(navGroup, "Collections", theme?.collectionIcon, () => AppNav.OpenScreen(AppNav.Collections));
             AddButton(navGroup, "Donate", theme?.donateIcon, () => DonateScreen.Open());
             AddButton(navGroup, "Menu Toggle", theme?.menuToggleIcon, ToggleNav);
-            navGroup.gameObject.SetActive(NavigationEnabled);
+            navGroup.gameObject.SetActive(NavigationEnabled || CameraButtonEnabled);
+            if (!NavigationEnabled && CameraButtonEnabled)
+            {
+                for (var i = 0; i < navGroup.childCount; i++)              // keep only the Camera button and its glow
+                {
+                    var child = navGroup.GetChild(i);
+                    if (child == cameraButton.transform || child == cameraHalo.transform) continue;
+                    child.gameObject.SetActive(false);
+                }
+            }
         }
 
         void ToggleNav()
