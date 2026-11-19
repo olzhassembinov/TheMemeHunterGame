@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbf7fa366dfe3e2c59799633493e6853, type: 3}
+  m_Name: SAD-PABLO-ESCOBAR
+  m_EditorClassIdentifier: Assembly-CSharp::MemeHunter.UI.MemeData
+  memeId: SAD-PABLO-ESCOBAR
+  displayName: SAD PABLO ESCOBAR
+  rarity: 0
+  price: 35
+  description: 
+  artwork: {fileID: 21300000, guid: 8bee79b60228a438381b367e724d9a53, type: 3}
