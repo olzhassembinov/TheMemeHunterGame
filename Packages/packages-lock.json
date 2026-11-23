@@ -1,20 +1,8 @@
 {
   "dependencies": {
-    "com.mapbox.sdk": {
-      "version": "https://github.com/mapbox/mapbox-unity-sdk.git",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {
-        "com.unity.render-pipelines.universal": "10.10.1",
-        "com.unity.nuget.newtonsoft-json": "3.2.1",
-        "com.unity.burst": "1.8.12",
-        "com.unity.inputsystem": "1.7.0"
-      },
-      "hash": "272222a7dfb3d00a24f5c81e72693d195acdfd4d"
-    },
     "com.unity.burst": {
       "version": "1.8.28",
-      "depth": 1,
+      "depth": 2,
       "source": "registry",
       "dependencies": {
         "com.unity.mathematics": "1.2.1",
