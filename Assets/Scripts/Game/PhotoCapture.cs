@@ -3,6 +3,7 @@ using System.IO;
 using MemeHunter.Dev;
 using MemeHunter.Net;
 using UnityEngine;
+using UnityEngine.XR.ARFoundation;
 
 namespace MemeHunter.Game
 {
@@ -30,7 +31,7 @@ namespace MemeHunter.Game
         }
 
         /// <summary>
-        /// In-app shutter: hides every Canvas and the DEV panels for one frame, takes a screenshot of the
+        /// In-app shutter: hides every Canvas, the DEV panels, the meme and the AR surface overlay for one frame, takes a screenshot of the
         /// camera image, shows them again and plays a short flash.
         /// </summary>
         static async Awaitable<byte[]> CaptureViewfinderAsync()
@@ -44,6 +45,10 @@ namespace MemeHunter.Game
             }
             DevGui.Hidden = true;
             MemeSpawner.SetPhotoMode(true);          // the virtual meme must not be in the real photo
+            // The dotted surface overlay AR draws on floors and walls must not be in the photo either.
+            // AR keeps tracking the surfaces while they are hidden, so the floor search still works.
+            var planes = Object.FindFirstObjectByType<ARPlaneManager>();
+            if (planes != null) planes.SetTrackablesActive(false);
 
             Texture2D shot = null;
             try
@@ -58,6 +63,7 @@ namespace MemeHunter.Game
                     if (canvas != null) canvas.enabled = true;
                 DevGui.Hidden = false;
                 MemeSpawner.SetPhotoMode(false);
+                if (planes != null) planes.SetTrackablesActive(true);
             }
 
             if (shot == null)
