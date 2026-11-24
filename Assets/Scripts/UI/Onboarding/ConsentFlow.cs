@@ -20,9 +20,6 @@ namespace MemeHunter.UI.Onboarding
 
         static GameObject open;
 
-        /// <summary>True while the Terms or the Permissions screen is on screen.</summary>
-        public static bool IsOpen => open != null;
-
         public static void Run(Action onDone)
         {
             if (MemeHunter.Net.ApiConfig.SkipConsentScreens) { onDone?.Invoke(); return; }   // testing: straight into the game

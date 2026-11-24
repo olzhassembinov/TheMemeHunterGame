@@ -26,8 +26,8 @@ namespace MemeHunter.UI.Hunt
         const float SteadyDegreesPerSecond = 22f;   // slower camera rotation than this counts as "steady"
         const float SteadySeconds = 0.35f;          // ... for at least this long
         const float FrameHalfSize = 0.2f;           // viewport half-size of the target frame (centre ± 0.2)
-        const float MenuButtonSize = 62f;
-        const float MenuGap = 10f;
+        /// <summary>false: the round side-menu buttons (Profile, Map, Notifications, Collections, Donate, MH) are built but kept inactive.</summary>
+        const bool SideMenuEnabled = false;
 
         public event Action CatchRequested;
         public event Action StartHuntRequested;
@@ -279,13 +279,10 @@ namespace MemeHunter.UI.Hunt
             actionLabel = actionButton.GetComponentInChildren<TextMeshProUGUI>();
             ((RectTransform)actionButton.transform).Place(new Vector2(0.5f, 0f), new Vector2(0f, 130f), new Vector2(210f, 64f));
 
-            // Side menu (right edge, bottom-up): Profile, Map, Notifications, XD (Collections), Leaderboard, Donate,
-            // MH toggle. While hunting only MH shows; MH opens the rest.
-            const int buttons = 7;
-            sideMenu = Ui.Rect("Side Menu", canvas).Place(new Vector2(1f, 0f), new Vector2(-14f, 40f),
-                new Vector2(MenuButtonSize, buttons * MenuButtonSize + (buttons - 1) * MenuGap));
+            // Side menu (right edge, bottom-up): Profile, Map, Notifications, XD (Collections), Donate, MH toggle.
+            sideMenu = Ui.Rect("Side Menu", canvas).Place(new Vector2(1f, 0f), new Vector2(-14f, 40f), new Vector2(62f, 6 * 62f + 5 * 10f));
             var column = sideMenu.gameObject.AddComponent<VerticalLayoutGroup>();
-            column.spacing = MenuGap;
+            column.spacing = 10f;
             column.childAlignment = TextAnchor.LowerCenter;
             column.childControlWidth = true;
             column.childControlHeight = true;
@@ -295,17 +292,17 @@ namespace MemeHunter.UI.Hunt
             AddMenuButton("Map", theme?.mapIcon, () => AppNav.OpenScreen(AppNav.Map));
             AddMenuButton("Notifications", theme?.notificationsIcon, () => AppNav.OpenScreen(AppNav.Notifications));
             AddMenuButton("Collections", theme?.collectionIcon, () => AppNav.OpenScreen(AppNav.Collections));
-            AddMenuButton("Leaderboard", theme?.leaderboardIcon, () => AppNav.OpenScreen(AppNav.Leaderboard));
             AddMenuButton("Donate", theme?.donateIcon, () => DonateScreen.Open());
             AddMenuButton("Menu Toggle", theme?.menuToggleIcon, () => { menuOpenedByPlayer = true; SetMenuOpen(!menuOpen); });
+            sideMenu.gameObject.SetActive(SideMenuEnabled);
         }
 
         void AddMenuButton(string name, Sprite icon, Action onClick)
         {
             var button = Ui.IconButton(name, sideMenu, icon, onClick);
             var size = button.gameObject.AddComponent<LayoutElement>();
-            size.preferredWidth = MenuButtonSize;
-            size.preferredHeight = MenuButtonSize;
+            size.preferredWidth = 62f;
+            size.preferredHeight = 62f;
         }
 
         void OnActionPressed()

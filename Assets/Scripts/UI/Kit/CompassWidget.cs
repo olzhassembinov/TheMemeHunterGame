@@ -71,9 +71,7 @@ namespace MemeHunter.UI.Kit
 
             // N mark on a ring that turns against the heading.
             var ring = Ui.Rect("North Ring", face.transform).Stretch();
-            var n = Ui.Text("N", ring, "N", 14f, Color.white);
-            var theme = UiTheme.Get();
-            if (theme != null) n.font = theme.Body(TextWeight.Bold);           // Jaro's small N read like a D
+            var n = Ui.Text("N", ring, "N", 14f, Color.white, display: true);
             northMark = n.rectTransform.Place(new Vector2(0.5f, 1f), new Vector2(0f, -2f), new Vector2(20f, 16f));
 
             var needle = Ui.Rect("Needle", face.transform).Place(new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(Size, Size));
