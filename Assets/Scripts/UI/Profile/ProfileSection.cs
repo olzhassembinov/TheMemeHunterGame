@@ -9,7 +9,7 @@ namespace MemeHunter.UI.Profile
 {
     /// <summary>
     /// Replaces the old Profile / Collections / Meme Card screens with 1:1 copies of the Figma "Profile" section
-    /// (158:15, 203:4, 196:159) built from code, and makes the Map the home screen.
+    /// (158:15, 203:4, 196:159) built from code, adds the Leaderboard page, and makes the Map the home screen.
     /// Hooks into the main scene at load time, so the scene file is not edited.
     /// </summary>
     public static class ProfileSection
@@ -35,15 +35,45 @@ namespace MemeHunter.UI.Profile
             // Old close buttons (e.g. "Notifications Back") went to a fixed screen: make them real Back buttons.
             foreach (var button in Object.FindObjectsByType<ScreenNavigationButton>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 if (button.name.EndsWith(" Back")) button.GoesBack = true;                                       // old chrome: not in the Figma screens
+            ScreenView profile = null;
+            var hasLeaderboard = false;
             foreach (var view in Object.FindObjectsByType<ScreenView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
+                if (view.gameObject.scene != scene) continue;
                 switch (view.ScreenId)
                 {
-                    case AppNav.Profile: Replace<ProfileScreen>(view); break;
+                    case AppNav.Profile: Replace<ProfileScreen>(view); profile = view; break;
                     case AppNav.Collections: Replace<CollectionScreen>(view); break;
                     case MemeCardId: Replace<MemeCardScreen>(view); break;
+                    case AppNav.Leaderboard: hasLeaderboard = true; break;
                 }
             }
+            if (!hasLeaderboard && profile != null)
+                AddLeaderboard(navigator, profile);
+        }
+
+        /// <summary>
+        /// The Leaderboard page has no designed screen in the scene: a new page next to Profile, registered with the
+        /// navigator before its Start runs (sceneLoaded comes first), so it opens and closes like the others.
+        /// </summary>
+        static void AddLeaderboard(ScreenNavigator navigator, ScreenView profile)
+        {
+            var go = new GameObject("Leaderboard", typeof(RectTransform));
+            go.SetActive(false);                                                  // built when it is first shown
+            var rect = (RectTransform)go.transform;
+            var template = (RectTransform)profile.transform;
+            rect.SetParent(template.parent, false);
+            rect.SetSiblingIndex(template.GetSiblingIndex() + 1);
+            rect.anchorMin = template.anchorMin;
+            rect.anchorMax = template.anchorMax;
+            rect.pivot = template.pivot;
+            rect.anchoredPosition = template.anchoredPosition;
+            rect.sizeDelta = template.sizeDelta;
+
+            var view = go.AddComponent<ScreenView>();
+            view.Configure(AppNav.Leaderboard);
+            Ui.Rect(nameof(LeaderboardScreen), rect).Stretch().gameObject.AddComponent<LeaderboardScreen>();
+            navigator.RegisterScreen(view);
         }
 
         static void Replace<T>(ScreenView view) where T : FigmaScreen
@@ -79,8 +109,24 @@ namespace MemeHunter.UI.Profile
     public abstract class FigmaScreen : MonoBehaviour
     {
         protected RectTransform Root { get; private set; }
+        RectTransform frame;
 
         void OnEnable() => Render();
+
+        void OnRectTransformDimensionsChange() => Fit();
+
+        /// <summary>
+        /// The 498 x 1080 Figma frame, centred and scaled down when the screen is shorter or narrower (16:9 phones
+        /// are ~550 x 978, very tall ones ~480 wide), so nothing is cut off or covered by the close button.
+        /// </summary>
+        public void Fit()
+        {
+            if (frame == null || Root == null) return;
+            var size = Root.rect.size;
+            if (size.x <= 0f || size.y <= 0f) return;
+            var scale = Mathf.Min(1f, size.x / frame.sizeDelta.x, size.y / frame.sizeDelta.y);
+            frame.localScale = new Vector3(scale, scale, 1f);
+        }
 
         /// <summary>Builds the screen from scratch (also used by the editor UI previews).</summary>
         public void Render()
@@ -94,7 +140,16 @@ namespace MemeHunter.UI.Profile
 
             var bg = Ui.Rounded("Background", Root, Fig.Background, 0f);
             bg.rectTransform.Stretch();
-            Build(Root);
+
+            // Before, the screens were laid out from the left edge: wider phones got an empty strip on the right and
+            // shorter ones (16:9) had the bottom cards under the close button. See Fit().
+            frame = Ui.Rect("Frame", Root);
+            frame.anchorMin = frame.anchorMax = new Vector2(0.5f, 0.5f);
+            frame.pivot = new Vector2(0.5f, 0.5f);
+            frame.anchoredPosition = Vector2.zero;
+            frame.sizeDelta = Ui.ReferenceResolution;
+            Build(frame);
+            Fit();
         }
 
         protected abstract void Build(RectTransform root);

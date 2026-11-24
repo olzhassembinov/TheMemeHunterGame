@@ -4,8 +4,8 @@ using UnityEngine.SceneManagement;
 namespace MemeHunter.UI
 {
     /// <summary>
-    /// Opens app screens from anywhere. The menu screens (Profile, Map, Collections, Notifications, MemeCard) live in
-    /// the Profile scene behind a ScreenNavigator; the AR hunt is its own scene.
+    /// Opens app screens from anywhere. The menu screens (Profile, Map, Collections, Notifications, Leaderboard,
+    /// MemeCard) live in the Profile scene behind a ScreenNavigator; the AR hunt is its own scene.
     /// </summary>
     public static class AppNav
     {
@@ -16,6 +16,7 @@ namespace MemeHunter.UI
         public const string Map = "Map";
         public const string Collections = "Collections";
         public const string Notifications = "Notifications";
+        public const string Leaderboard = "Leaderboard";
 
         /// <summary>Screen to show once the main scene has loaded (read by ScreenNavigator.Start).</summary>
         public static string PendingScreen { get; private set; }
