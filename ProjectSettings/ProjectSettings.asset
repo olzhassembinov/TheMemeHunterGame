@@ -576,8 +576,10 @@ PlayerSettings:
   enableInternalProfiler: 0
   logObjCUncaughtExceptions: 1
   enableCrashReportAPI: 0
-  cameraUsageDescription: AR Camera
-  locationUsageDescription: 
+  cameraUsageDescription: Meme Hunter uses the camera to show memes in AR and to
+    take photos of places for the accessibility map.
+  locationUsageDescription: Meme Hunter uses your location to show memes near you
+    and to check that you are at the place.
   microphoneUsageDescription: 
   bluetoothUsageDescription: 
   macOSTargetOSVersion: 12.0
