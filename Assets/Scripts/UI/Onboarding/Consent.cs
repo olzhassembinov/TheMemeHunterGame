@@ -94,7 +94,8 @@ namespace MemeHunter.UI.Onboarding
             if (Permission.HasUserAuthorizedPermission(permission)) { done?.Invoke(true); return; }
             var callbacks = new PermissionCallbacks();
             callbacks.PermissionGranted += _ => done?.Invoke(true);
-            callbacks.PermissionDenied += _ => done?.Invoke(false);      // also "don't ask again" (Unity 6)
+            callbacks.PermissionDenied += _ => done?.Invoke(false);
+            callbacks.PermissionDeniedAndDontAskAgain += _ => done?.Invoke(false);
             Permission.RequestUserPermission(permission, callbacks);
         }
 #endif

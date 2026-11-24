@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -34,6 +33,8 @@ namespace MemeHunter.Editor
 
         public static void Start<TDriver>(string scenePath, bool quit) where TDriver : SimulationDriver
         {
+            UI.Onboarding.Consent.Accept();              // no terms overlay in a simulation
+            PlayerPrefs.Save();
             SessionState.SetString(DriverKey, typeof(TDriver).AssemblyQualifiedName);
             SessionState.SetBool(QuitKey, quit);
             EditorSceneManager.OpenScene(scenePath);
@@ -78,47 +79,17 @@ namespace MemeHunter.Editor
     {
         static readonly Vector2Int Size = new Vector2Int(498 * 2, 1080 * 2);
 
-        /// <summary>Saved data a simulation may change: put back afterwards, so the Editor keeps its own player.</summary>
-        static readonly string[] KeptStrings = { "PlayerProgress", "ActiveHunt", "LocalLeague", "Nickname", "City", "ConsentAcceptedAt" };
-        static readonly string[] KeptInts = { "AvatarIndex", "Day", "Month", "Year", "ConsentPolicyVersion" };
-
         public bool Done { get; private set; }
         public bool Failed { get; protected set; } = true;
 
-        readonly List<Action> restore = new List<Action>();
-
         protected abstract IEnumerator Run();
 
-        /// <summary>false: the simulation goes through the Terms screen itself (onboarding).</summary>
-        protected virtual bool AcceptTerms => true;
-
-        protected void Awake()
-        {
-            DontDestroyOnLoad(gameObject);
-            foreach (var key in KeptStrings)
-            {
-                var had = PlayerPrefs.HasKey(key);
-                var value = PlayerPrefs.GetString(key, string.Empty);
-                restore.Add(() => { if (had) PlayerPrefs.SetString(key, value); else PlayerPrefs.DeleteKey(key); });
-            }
-            foreach (var key in KeptInts)
-            {
-                var had = PlayerPrefs.HasKey(key);
-                var value = PlayerPrefs.GetInt(key, 0);
-                restore.Add(() => { if (had) PlayerPrefs.SetInt(key, value); else PlayerPrefs.DeleteKey(key); });
-            }
-            if (AcceptTerms) UI.Onboarding.Consent.Accept();          // no terms overlay in the other simulations
-        }
+        protected void Awake() => DontDestroyOnLoad(gameObject);
 
         protected IEnumerator Start()
         {
             Log("driver started");
             yield return Run();
-            foreach (var undo in restore) undo();
-            PlayerPrefs.Save();
-            Game.PlayerProgress.Reload();
-            Game.LocalLeague.Reload();
-            Log("saved data restored");
             yield return null;
             Done = true;                                 // SimulationRunner leaves Play Mode (and quits in batch)
         }
@@ -156,8 +127,6 @@ namespace MemeHunter.Editor
                 canvases[i].planeDistance = cam.nearClipPlane + 0.5f + canvases[i].sortingOrder * -0.0001f;
             }
             Canvas.ForceUpdateCanvases();
-            foreach (var screen in FindObjectsByType<UI.Profile.FigmaScreen>(FindObjectsSortMode.None))
-                screen.Fit();                                // the Figma frame fits the screenshot's size
             cam.Render();
             Canvas.ForceUpdateCanvases();
             cam.Render();
@@ -171,9 +140,6 @@ namespace MemeHunter.Editor
             cam.targetTexture = oldTarget;
             for (var i = 0; i < canvases.Length; i++)
                 if (canvases[i] != null) canvases[i].renderMode = modes[i];
-            Canvas.ForceUpdateCanvases();
-            foreach (var screen in FindObjectsByType<UI.Profile.FigmaScreen>(FindObjectsSortMode.None))
-                screen.Fit();                                // and the real screen again
             if (temporary) Destroy(cam.gameObject);
 
             var dir = Environment.GetEnvironmentVariable("UI_PREVIEW_DIR");
