@@ -116,27 +116,6 @@ namespace MemeHunter.Game
                     data.caught.Add(new CaughtMeme { memeId = memeId, rarity = MemeCatalog.Find(memeId)?.Rarity.ToString() });
         }
 
-        /// <summary>Editor previews and tests only: catches at the given times (the weekly league counts them). Nothing is saved.</summary>
-        public static void UsePreviewCatches(params (string memeId, DateTime at)[] catches)
-        {
-            data = new Data();
-            foreach (var (memeId, at) in catches)
-            {
-                var rarity = MemeCatalog.Find(memeId)?.Rarity ?? MemeRarity.Common;
-                data.xp += XpFor(rarity);
-                data.caught.Add(new CaughtMeme
-                {
-                    memeId = memeId,
-                    cardId = "preview",
-                    rarity = rarity.ToString(),
-                    caughtAtUnix = new DateTimeOffset(at).ToUnixTimeSeconds()
-                });
-            }
-        }
-
-        /// <summary>Drops the in-memory copy so the next read comes from PlayerPrefs (tests restore saved data this way).</summary>
-        public static void Reload() => data = null;
-
         public static void Reset()
         {
             data = new Data();

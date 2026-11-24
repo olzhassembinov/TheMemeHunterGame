@@ -38,7 +38,7 @@ namespace MemeHunter.Dev
                 open = !open;
             if (!open) return;
 
-            GUILayout.BeginArea(new Rect(w - 190, 38, 184, 330));
+            GUILayout.BeginArea(new Rect(w - 190, 38, 184, 260));
             if (GUILayout.Button(testPanel.Visible ? "Hide net/camera test" : "Net / camera test", GUILayout.Height(30)))
             {
                 testPanel.Visible = !testPanel.Visible;
@@ -48,15 +48,12 @@ namespace MemeHunter.Dev
             if (Jump("WelcomeScreen")) SceneManager.LoadScene("WelcomeScreen");
             if (Jump("Profile")) UI.AppNav.OpenScreen(UI.AppNav.Profile);
             if (Jump("Map")) UI.AppNav.OpenScreen(UI.AppNav.Map);
-            if (Jump("Leaderboard")) UI.AppNav.OpenScreen(UI.AppNav.Leaderboard);
             if (Jump("SampleScene (camera)")) UI.AppNav.OpenHunt(startHunting: false);
             if (GUILayout.Button("Clear saved data", GUILayout.Height(30)))
             {
                 PlayerPrefs.DeleteAll();               // forget player, profile, server address override
                 PlayerPrefs.Save();
                 Session.Clear();
-                Game.PlayerProgress.Reload();          // catches / XP and the league are cached in memory too
-                Game.LocalLeague.Reset();
                 Toast.Show("Saved data cleared");
             }
             GUILayout.EndArea();

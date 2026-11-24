@@ -34,10 +34,6 @@ namespace MemeHunter.UI.Kit
         public Sprite plusIcon;
         public Sprite minusIcon;
         public Sprite showHideIcon;         // show / hide meme dots on the map
-        public Sprite leaderboardIcon;      // trophy: opens the Leaderboard (not in Figma; drawn in the same style)
-
-        [Header("Leaderboard")]
-        public Sprite trophyGlyph;          // white trophy, drawn on the rarity circles as league badges
 
         [Header("Profile section (Figma 158:15 / 196:159 / 203:4)")]
         public Sprite coinIcon;
