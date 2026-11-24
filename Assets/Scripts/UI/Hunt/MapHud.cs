@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using MemeHunter.Game;
 using MemeHunter.Net;
 using MemeHunter.UI.Kit;
-using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -12,24 +11,22 @@ namespace MemeHunter.UI.Hunt
 {
     /// <summary>
     /// Makes the designed Map screen (Figma 208:785) work: nearby memes as rarity-coloured dots around the player,
-    /// map tools (zoom +/-, show/hide dots, recenter), the navigation buttons incl. Camera, a distance block and the
-    /// "Meme nearby!" popup. Added at runtime to the ScreenView with id "Map", so the scene file is not edited.
+    /// map tools (zoom +/-, show/hide dots, recenter), the navigation column, the direction bar at the bottom
+    /// (arrow, distance and the Hunt button, see DirectionPanel) and the "Meme nearby!" popup.
+    /// Added at runtime to the ScreenView with id "Map", so the scene file is not edited.
     /// The street map underneath is TileMapLayer (OpenStreetMap, or Mapbox with a token).
     /// </summary>
     public sealed class MapHud : MonoBehaviour
     {
         const float RefreshSeconds = 15f;
         const double NearbyPopupM = 120.0;      // server positions are rounded to ~100 m, so "nearby" is generous
-        /// <summary>false: the navigation column (Camera, Profile, Notifications, Collections, Donate, MH) is built but kept inactive. The map tools stay.</summary>
-        const bool NavigationEnabled = false;
+        const float ButtonSize = 58f;
+        const float Gap = 10f;
 
         TileMapLayer map;
         RectTransform dotLayer;
         RectTransform playerDot;
-        TextMeshProUGUI distanceText;
-        Button cameraButton;
-        CompassWidget compass;
-        RoundedRectGraphic cameraHalo;
+        DirectionPanel panel;
         RectTransform navGroup;
         bool navOpen = true;
 
@@ -58,12 +55,17 @@ namespace MemeHunter.UI.Hunt
 
         void OnEnable() { nextRefresh = 0f; }
 
-        async void Update()
+        void Update()
         {
             UpdateDots();
-            PulseCamera();
+            panel.SetHuntGlow(CameraUnlocked);
+            if (!loading && Time.unscaledTime >= nextRefresh)
+                RefreshNearby();
+        }
 
-            if (loading || Time.unscaledTime < nextRefresh) return;
+        /// <summary>Asks the server for the memes around the player (every 15 s while the Map is open).</summary>
+        async void RefreshNearby()
+        {
             nextRefresh = Time.unscaledTime + RefreshSeconds;
             loading = true;
             try
@@ -84,11 +86,16 @@ namespace MemeHunter.UI.Hunt
             }
         }
 
-        // ---------- Dots, distance, nearby popup ----------
+        // ---------- Dots, direction bar, nearby popup ----------
 
         void UpdateDots()
         {
-            if (!Geo.TryGetFix(out var fix)) { distanceText.text = "Finding you..."; return; }
+            if (!Geo.TryGetFix(out var fix))
+            {
+                panel.ClearTarget();
+                panel.Show("LOCATING", null, "Finding you...");
+                return;
+            }
             Layout(fix.Lat, fix.Lng, allowPopup: true);
         }
 
@@ -101,15 +108,16 @@ namespace MemeHunter.UI.Hunt
             hud.cards.AddRange(fakeCards);
             hud.Layout(lat, lng, allowPopup: false);
             Canvas.ForceUpdateCanvases();                                   // let the button columns lay out first
-            hud.PulseCamera();
+            hud.panel.PointFrom(lat, lng);
+            hud.panel.SetHuntGlow(hud.CameraUnlocked);
+            hud.panel.Pulse(0.4f);
             return hud;
         }
 
         void Layout(double fixLat, double fixLng, bool allowPopup)
         {
-            var fix = (Lat: fixLat, Lng: fixLng);
-            map.SetPlayer(fix.Lat, fix.Lng);
-            playerDot.anchoredPosition = map.Project(fix.Lat, fix.Lng);   // moves off-centre when the map is dragged
+            map.SetPlayer(fixLat, fixLng);
+            playerDot.anchoredPosition = map.Project(fixLat, fixLng);      // moves off-centre when the map is dragged
 
             var hunt = Session.ActiveHunt;
             var shown = 0;
@@ -118,7 +126,7 @@ namespace MemeHunter.UI.Hunt
 
             foreach (var card in cards)
             {
-                var d = Geo.DistanceMeters(fix.Lat, fix.Lng, card.ApproxLat, card.ApproxLng);
+                var d = Geo.DistanceMeters(fixLat, fixLng, card.ApproxLat, card.ApproxLng);
                 if (nearestM < 0 || d < nearestM) { nearestM = d; nearest = card; }
                 var dot = DotAt(shown++, Rarity.ColorOf(card.Rarity), 24f);
                 dot.anchoredPosition = map.Project(card.ApproxLat, card.ApproxLng);
@@ -128,22 +136,32 @@ namespace MemeHunter.UI.Hunt
             {
                 var pin = DotAt(shown++, Rarity.ColorOf(hunt.Rarity), 30f, ring: true);
                 pin.anchoredPosition = map.Project(hunt.Lat, hunt.Lng);
-                nearestM = Geo.DistanceMeters(fix.Lat, fix.Lng, hunt.Lat, hunt.Lng);
+                nearestM = Geo.DistanceMeters(fixLat, fixLng, hunt.Lat, hunt.Lng);
             }
 
             for (var i = shown; i < dotLayer.childCount; i++)
                 dotLayer.GetChild(i).gameObject.SetActive(false);
 
-            // Compass toward the claimed meme, or else the nearest one.
-            if (hunt != null) compass.SetTarget(hunt.Lat, hunt.Lng);
-            else if (nearest != null) compass.SetTarget(nearest.ApproxLat, nearest.ApproxLng);
-            else compass.ClearTarget();
+            // Direction bar: toward the claimed meme, or else the nearest one.
+            if (hunt != null)
+            {
+                panel.SetTarget(hunt.Lat, hunt.Lng);
+                panel.Show("YOUR MEME · " + RarityName(hunt.Rarity), Rarity.ColorOf(hunt.Rarity), FormatDistance(nearestM));
+            }
+            else if (nearest != null)
+            {
+                panel.SetTarget(nearest.ApproxLat, nearest.ApproxLng);
+                panel.Show("NEAREST MEME · " + RarityName(nearest.Rarity), Rarity.ColorOf(nearest.Rarity), FormatDistance(nearestM));
+            }
+            else
+            {
+                panel.ClearTarget();
+                panel.Show("NO MEMES NEARBY", null, "Keep exploring");
+            }
 
-            distanceText.text = nearestM < 0 ? "No memes nearby"
-                : hunt != null ? "Your meme: " + FormatDistance(nearestM)
-                : "Nearest meme: " + FormatDistance(nearestM);
-
-            if (allowPopup && hunt == null && nearest != null && nearestM <= NearbyPopupM && announced.Add(nearest.Id))
+            // Not over the Terms / Permissions screens (first launch): the popup is drawn above them.
+            if (allowPopup && hunt == null && nearest != null && nearestM <= NearbyPopupM && !Onboarding.ConsentFlow.IsOpen
+                && announced.Add(nearest.Id))
                 ShowNearbyPopup(nearest.Rarity);
         }
 
@@ -152,7 +170,7 @@ namespace MemeHunter.UI.Hunt
         void ShowNearbyPopup(string rarity)
         {
             Handheld.Vibrate();
-            var popup = Popup.Create("Meme nearby!", $"A {rarity.ToLowerInvariant()} meme is hiding close to you. Open the camera and catch it!", 70f);
+            var popup = Popup.Create("Meme nearby!", $"A {RarityName(rarity).ToLowerInvariant()} meme is hiding close to you. Open the camera and catch it!", 70f);
             var start = Ui.PillButton("Start hunt", popup.Content, "Start hunt", () =>
             {
                 popup.Close();
@@ -161,27 +179,8 @@ namespace MemeHunter.UI.Hunt
             ((RectTransform)start.transform).Place(new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(220f, 64f));
         }
 
-        /// <summary>The camera is always available: it opens the AR hunt (and starts one if none is active).</summary>
-        void OnCameraPressed() => AppNav.OpenHunt(startHunting: Session.ActiveHunt == null);
-
-        void PulseCamera()
-        {
-            var on = CameraUnlocked;
-            cameraHalo.gameObject.SetActive(on);
-            if (on)
-            {
-                var target = (RectTransform)cameraButton.transform;
-                var halo = cameraHalo.rectTransform;
-                halo.anchorMin = target.anchorMin;
-                halo.anchorMax = target.anchorMax;
-                halo.pivot = target.pivot;
-                halo.anchoredPosition = target.anchoredPosition;
-                halo.sizeDelta = target.sizeDelta + new Vector2(12f, 12f);
-                var k = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4f);
-                cameraHalo.color = new Color(1f, 0.77f, 0.15f, 0.35f + 0.4f * k);
-                cameraHalo.transform.localScale = Vector3.one * (1.05f + 0.1f * k);
-            }
-        }
+        /// <summary>The Hunt button is always available: it opens the AR hunt (and starts one if none is active).</summary>
+        void OnHuntPressed() => AppNav.OpenHunt(startHunting: Session.ActiveHunt == null);
 
         RectTransform DotAt(int index, Color color, float size, bool ring = false)
         {
@@ -201,9 +200,18 @@ namespace MemeHunter.UI.Hunt
             }
             dot.rectTransform.Place(new Vector2(0.5f, 0.5f), dot.rectTransform.anchoredPosition, new Vector2(size, size));
             dot.color = ring ? MemeHunterUiColors.LegendaryGold : Color.white;         // white outline, gold for the claimed one
-            dot.transform.GetChild(0).GetComponent<RoundedRectGraphic>().color = color;
+            var innerDot = dot.transform.GetChild(0).GetComponent<RoundedRectGraphic>();
+            innerDot.color = color;
+            // A reused dot can change size (pin 30 / dot 24): keep it round. Only when it changes (redraws the mesh).
+            if (!Mathf.Approximately(dot.CornerRadius, size / 2f))
+            {
+                dot.CornerRadius = size / 2f;
+                innerDot.CornerRadius = size / 2f - 4f;
+            }
             return dot.rectTransform;
         }
+
+        static string RarityName(string serverRarity) => Rarity.Parse(serverRarity).ToString().ToUpperInvariant();
 
         static string FormatDistance(double m) =>
             m >= 1000 ? (m / 1000.0).ToString("0.0") + " km" : Mathf.RoundToInt((float)m) + " m";
@@ -229,6 +237,7 @@ namespace MemeHunter.UI.Hunt
             HideChild(screen, "Placeholder Map Artwork");
             HideChild(screen, "Map Placeholder Label");
             map = TileMapLayer.Create(root);
+            map.LiftCredit(DirectionPanel.Height);
 
             dotLayer = Ui.Rect("Meme Dots", root).Stretch();
 
@@ -240,56 +249,40 @@ namespace MemeHunter.UI.Hunt
             meInner.raycastTarget = false;
             meInner.rectTransform.Stretch(4f);
 
-            // Distance block (top centre, navy pill, lime Jaro).
-            var pill = Ui.Rounded("Distance Block", root, new Color(0.15f, 0.18f, 0.36f, 0.8f), 24f);
-            pill.raycastTarget = false;
-            pill.rectTransform.Place(new Vector2(0.5f, 1f), new Vector2(0f, -28f), new Vector2(280f, 52f));
-            distanceText = Ui.Text("Distance", pill.transform, "Finding you...", 24f, MemeHunterUiColors.Lime, display: true);
-            distanceText.rectTransform.Stretch(8f);
-            distanceText.textWrappingMode = TextWrappingModes.NoWrap;
-            distanceText.enableAutoSizing = true;
-            distanceText.fontSizeMin = 14f;
-            distanceText.fontSizeMax = 24f;
-
-            compass = CompassWidget.Create(root);
-            ((RectTransform)compass.transform).Place(new Vector2(0.5f, 1f), new Vector2(0f, -92f), new Vector2(150f, 126f));
-
             // Map tools (right edge, upper): zoom +, zoom -, show/hide dots, recenter.
-            var tools = Column(root, "Map Tools", new Vector2(1f, 1f), new Vector2(-14f, -110f), 4);
+            var tools = Column(root, "Map Tools", new Vector2(1f, 1f), new Vector2(-14f, -40f), 4);
             AddButton(tools, "Zoom In", theme?.plusIcon, () => map.ZoomBy(1));
             AddButton(tools, "Zoom Out", theme?.minusIcon, () => map.ZoomBy(-1));
             AddButton(tools, "Show Hide Dots", theme?.showHideIcon, () => dotLayer.gameObject.SetActive(!dotLayer.gameObject.activeSelf));
             AddButton(tools, "Recenter", theme?.mapIcon, () => { map.Recenter(); nextRefresh = 0f; });
 
-            // Navigation (right edge, bottom-up): Camera, Profile, Notifications, XD, Donate, MH toggle.
-            navGroup = Column(root, "Navigation", new Vector2(1f, 0f), new Vector2(-14f, 40f), 6);
+            // Navigation (right edge, bottom-up, above the direction bar): the pages, Donate and the MH toggle.
+            navGroup = Column(root, "Navigation", new Vector2(1f, 0f), new Vector2(-14f, DirectionPanel.Height + 18f), 6);
             navGroup.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.LowerCenter;
-            cameraButton = AddButton(navGroup, "Camera", theme?.cameraIcon, OnCameraPressed);
-            // Halo behind the Camera button (a sibling drawn first, kept on top of the button's position).
-            cameraHalo = Ui.Rounded("Camera Halo", navGroup, MemeHunterUiColors.LegendaryGold, 35f);
-            cameraHalo.raycastTarget = false;
-            cameraHalo.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-            cameraHalo.transform.SetAsFirstSibling();
             AddButton(navGroup, "Profile", theme?.profileIcon, () => AppNav.OpenScreen(AppNav.Profile));
             AddButton(navGroup, "Notifications", theme?.notificationsIcon, () => AppNav.OpenScreen(AppNav.Notifications));
             AddButton(navGroup, "Collections", theme?.collectionIcon, () => AppNav.OpenScreen(AppNav.Collections));
+            AddButton(navGroup, "Leaderboard", theme?.leaderboardIcon, () => AppNav.OpenScreen(AppNav.Leaderboard));
             AddButton(navGroup, "Donate", theme?.donateIcon, () => DonateScreen.Open());
             AddButton(navGroup, "Menu Toggle", theme?.menuToggleIcon, ToggleNav);
-            navGroup.gameObject.SetActive(NavigationEnabled);
+
+            // Direction bar along the bottom edge (drawn last: on top of the map and the dots).
+            panel = DirectionPanel.Create(root, OnHuntPressed);
+            panel.Show("LOCATING", null, "Finding you...");
         }
 
         void ToggleNav()
         {
             navOpen = !navOpen;
-            for (var i = 2; i < navGroup.childCount - 1; i++)       // halo (0), Camera (1) and MH (last) always stay
+            for (var i = 0; i < navGroup.childCount - 1; i++)       // the MH toggle (last) always stays
                 navGroup.GetChild(i).gameObject.SetActive(navOpen);
         }
 
         static RectTransform Column(RectTransform parent, string name, Vector2 anchor, Vector2 offset, int count)
         {
-            var column = Ui.Rect(name, parent).Place(anchor, offset, new Vector2(58f, count * 58f + (count - 1) * 10f));
+            var column = Ui.Rect(name, parent).Place(anchor, offset, new Vector2(ButtonSize, count * ButtonSize + (count - 1) * Gap));
             var layout = column.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.spacing = 10f;
+            layout.spacing = Gap;
             layout.childAlignment = TextAnchor.UpperCenter;
             layout.childControlWidth = true;
             layout.childControlHeight = true;
@@ -301,8 +294,8 @@ namespace MemeHunter.UI.Hunt
         {
             var button = Ui.IconButton(name, column, icon, onClick);
             var size = button.gameObject.AddComponent<LayoutElement>();
-            size.preferredWidth = 58f;
-            size.preferredHeight = 58f;
+            size.preferredWidth = ButtonSize;
+            size.preferredHeight = ButtonSize;
             return button;
         }
 
