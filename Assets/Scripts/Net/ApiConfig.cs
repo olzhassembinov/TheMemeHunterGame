@@ -17,13 +17,13 @@ namespace MemeHunter.Net
         const string OverrideKey = "ApiBaseUrl";
 
         /// <summary>Set to false for the final demo build: hides all developer buttons.</summary>
-        public const bool ShowDevTools = true;
+        public static readonly bool ShowDevTools = true;      // readonly, not const: no "unreachable code" warnings
 
         /// <summary>
         /// Testing: true skips the Terms of use and the Allow geolocation &amp; camera screens (the phone still asks for
-        /// location and camera the moment the game needs them). Set to false for the demo build.
+        /// location and camera the moment the game needs them). false (the demo build) shows them after registration.
         /// </summary>
-        public const bool SkipConsentScreens = true;
+        public static readonly bool SkipConsentScreens = false;
 
         /// <summary>
         /// false: the AR screen is the viewfinder and Catch takes the photo in the app.
