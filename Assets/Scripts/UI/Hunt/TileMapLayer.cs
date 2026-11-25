@@ -59,6 +59,7 @@ namespace MemeHunter.UI.Hunt
         readonly Stack<RawImage> pool = new Stack<RawImage>();
         RectTransform tileRoot;
         Canvas canvas;
+        TextMeshProUGUI credit;
 
         int zoom = DefaultZoom;
         double centerLat = 43.2389, centerLng = 76.8897;     // Almaty until the first GPS fix
@@ -212,12 +213,18 @@ namespace MemeHunter.UI.Hunt
             tint.raycastTarget = false;
 
             // Required credit for the map data and tiles.
-            var credit = Fig.Body(root, Credit, 11f, Fig.MainText.WithAlpha(0.8f));
+            credit = Fig.Body(root, Credit, 11f, Fig.MainText.WithAlpha(0.8f));
             credit.alignment = TextAlignmentOptions.BottomLeft;
             credit.textWrappingMode = TextWrappingModes.NoWrap;
             credit.rectTransform.anchorMin = credit.rectTransform.anchorMax = credit.rectTransform.pivot = Vector2.zero;
             credit.rectTransform.anchoredPosition = new Vector2(8f, 6f);
             credit.rectTransform.sizeDelta = new Vector2(300f, 16f);
+        }
+
+        /// <summary>Moves the credit up, above a panel of this height docked to the bottom edge (it must stay visible).</summary>
+        public void LiftCredit(float bottom)
+        {
+            if (credit != null) credit.rectTransform.anchoredPosition = new Vector2(8f, bottom + 6f);
         }
 
         // ---------- Web Mercator ----------

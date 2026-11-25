@@ -14,6 +14,17 @@ namespace MemeHunter.UI
         static readonly Color Background = MemeHunterUiColors.LightPurple;   // #A6AED7
         static readonly Color PillText = new Color32(17, 17, 17, 255);
 
+        static GameObject open;                                              // the Donate or Thank-you screen on show
+
+        /// <summary>Closes the Donate / Thank-you screen if one is open (Android Back). Returns whether it did.</summary>
+        public static bool CloseIfOpen()
+        {
+            if (open == null) return false;
+            Object.Destroy(open);
+            open = null;
+            return true;
+        }
+
         public static void Open()
         {
             var screen = BuildScreen("Donate");
@@ -69,7 +80,9 @@ namespace MemeHunter.UI
 
         static (GameObject root, RectTransform canvas) BuildScreen(string name)
         {
+            if (open != null) Object.Destroy(open);                          // never two on top of each other
             var canvas = Ui.OverlayCanvas(name + " Screen", 800);
+            open = canvas.gameObject;
             var bg = Ui.Rounded("Background", canvas, Background, 0f);   // also blocks taps on what is behind
             bg.rectTransform.Stretch();
 

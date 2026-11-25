@@ -203,7 +203,11 @@ namespace MemeHunter.Game
         /// <summary>Same as tapping the Catch button (used by the editor simulation).</summary>
         public void Catch() => OnCatchPressed();
 
-        /// <summary>Creates the server player from the onboarding nickname if this device has none yet.</summary>
+        /// <summary>
+        /// Creates the server player from the onboarding nickname if this device has none yet. Once per run the saved
+        /// id is checked: after a server reset it is unknown (404) and every hunt failed with "Player not found",
+        /// so it is forgotten and the player registers again.
+        /// </summary>
         static async Awaitable<bool> EnsurePlayer()
         {
             if (Session.HasPlayer)

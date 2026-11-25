@@ -45,25 +45,61 @@ namespace MemeHunter.Editor
             CollectionScreen.Filter = null;
             MemeCardScreen.Select(MemeCatalog.Find("B-HOPPING"));
             CaptureScreen<MemeCardScreen>("meme_card");
+            CaptureScreen<MemeCardScreen>("meme_card_16x9", new Vector2Int(1080, 1920));
+            CaptureLeaderboard();
             Capture("terms", () => MemeHunter.UI.Onboarding.ConsentFlow.ShowTerms(null));
             Capture("permissions", () => MemeHunter.UI.Onboarding.ConsentFlow.ShowPermissions(null));
             Capture("donate", () => DonateScreen.Open());
             Capture("donate_thanks", () => DonateScreen.OpenThanks());
         }
 
-        static void CaptureScreen<T>(string file) where T : FigmaScreen
+        /// <summary>Both Leaderboard pages mid-table in the Uncommon League, then a player on the podium (Rare League).</summary>
+        static void CaptureLeaderboard()
+        {
+            var now = DateTime.Now;
+            var monday = LocalLeague.WeekStart(now).AddHours(10);
+            if (monday > now) monday = now.AddMinutes(-90);
+            PlayerProgress.UsePreviewCatches(("B-HOPPING", monday), ("DOGE", now.AddMinutes(-40)), ("GIGACHAD", now.AddMinutes(-20)));
+            LocalLeague.UsePreviewState(MemeRarity.Uncommon, 4, 3);
+            LeaderboardScreen.Shown = LeaderboardScreen.Page.Global;
+            CaptureScreen<LeaderboardScreen>("leaderboard_global");
+            LeaderboardScreen.Shown = LeaderboardScreen.Page.Me;
+            CaptureScreen<LeaderboardScreen>("leaderboard_me");
+
+            PlayerProgress.UsePreviewCatches(("B-HOPPING", now.AddMinutes(-50)), ("B-HOPPING", now.AddMinutes(-30)),
+                ("DOGE", now.AddMinutes(-20)), ("B-HOPPING", now.AddMinutes(-10)), ("DOGE", now.AddMinutes(-5)));
+            LocalLeague.UsePreviewState(MemeRarity.Rare, 2, 6);
+            LeaderboardScreen.Shown = LeaderboardScreen.Page.Global;
+            CaptureScreen<LeaderboardScreen>("leaderboard_podium");
+
+            // A 16:9 phone (1080x1920): the canvas is ~550 wide, the 498 Figma frame must sit in the middle.
+            var phone169 = new Vector2Int(1080, 1920);
+            CaptureScreen<LeaderboardScreen>("leaderboard_16x9", phone169);
+            CaptureScreen<ProfileScreen>("profile_16x9", phone169);
+            CaptureMap("map_16x9", phone169);
+            CaptureScreen<LeaderboardScreen>("leaderboard_9x21", new Vector2Int(1080, 2520));   // a very tall, narrow phone
+
+            LocalLeague.Reload();                                         // previews must not leak into the editor
+            PlayerProgress.Reload();
+        }
+
+        static void CaptureScreen<T>(string file) where T : FigmaScreen => CaptureScreen<T>(file, Size);
+
+        static void CaptureScreen<T>(string file, Vector2Int size) where T : FigmaScreen
         {
             Capture(file, () =>
             {
                 var canvas = Ui.OverlayCanvas("Preview " + file, 10);
                 Ui.Rect(typeof(T).Name, canvas).Stretch().gameObject.AddComponent<T>().Render();
-            });
+            }, size);
         }
 
         /// <summary>The designed Map screen from the Profile scene with the working HUD and three fake memes.</summary>
-        static void CaptureMap()
+        static void CaptureMap(string file = "map") => CaptureMap(file, Size);
+
+        static void CaptureMap(string file, Vector2Int size)
         {
-            Capture("map", () =>
+            Capture(file, () =>
             {
                 EditorSceneManager.OpenScene("Assets/Scenes/Profile.unity", OpenSceneMode.Additive);
                 foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -80,7 +116,7 @@ namespace MemeHunter.Editor
                         new MemeHunter.Net.NearbyCardDto { Id = "c", Rarity = "common", ApproxLat = lat + 0.0016, ApproxLng = lng - 0.0018 },
                     });
                 }
-            });
+            }, size);
         }
 
         /// <summary>The flip animation does not run in edit mode: show the card front and the rewards directly.</summary>
@@ -96,7 +132,10 @@ namespace MemeHunter.Editor
                 popup.Body.alpha = 1f;
         }
 
-        public static void Capture(string fileName, Action build)
+        public static void Capture(string fileName, Action build) => Capture(fileName, build, Size);
+
+        /// <summary>Renders at a given pixel size: 1080x1920 shows a 16:9 phone (canvas ~550 units wide).</summary>
+        public static void Capture(string fileName, Action build, Vector2Int size)
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -118,17 +157,19 @@ namespace MemeHunter.Editor
             foreach (var popup in UnityEngine.Object.FindObjectsByType<Popup>(FindObjectsSortMode.None))
                 popup.Card.localScale = Vector3.one;                     // the pop-in animation does not run in edit mode
 
-            var texture = new RenderTexture(Size.x, Size.y, 24);
+            var texture = new RenderTexture(size.x, size.y, 24);
             camera.targetTexture = texture;
-            camera.aspect = (float)Size.x / Size.y;
+            camera.aspect = (float)size.x / size.y;
             Canvas.ForceUpdateCanvases();
+            foreach (var screen in UnityEngine.Object.FindObjectsByType<FigmaScreen>(FindObjectsSortMode.None))
+                screen.Fit();                                             // edit mode sends no size-change message
             camera.Render();
             Canvas.ForceUpdateCanvases();                                 // second pass: layout groups settle after one update
             camera.Render();
 
             RenderTexture.active = texture;
-            var image = new Texture2D(Size.x, Size.y, TextureFormat.RGB24, false);
-            image.ReadPixels(new Rect(0, 0, Size.x, Size.y), 0, 0);
+            var image = new Texture2D(size.x, size.y, TextureFormat.RGB24, false);
+            image.ReadPixels(new Rect(0, 0, size.x, size.y), 0, 0);
             image.Apply();
             RenderTexture.active = null;
 

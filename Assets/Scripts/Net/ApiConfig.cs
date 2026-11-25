@@ -17,20 +17,33 @@ namespace MemeHunter.Net
         const string OverrideKey = "ApiBaseUrl";
 
         /// <summary>
-        /// Developer buttons (DEV menu, test meme, teleport, net test panel). On only inside the Unity Editor: no phone
-        /// build (beta, demo) shows them. To try them on a phone, change the #else value to true for that build.
+        /// The beta build for testers (menu: Meme Hunter / Build Android APK (beta release), which defines BETA_RELEASE):
+        /// features that are not ready for them stay hidden (side/navigation buttons, the leaderboard, the full onboarding
+        /// form, the consent screens). false in the Editor and in development builds: the full UI.
+        /// readonly, not const: no "unreachable code" warnings where it is used.
         /// </summary>
-#if UNITY_EDITOR
+#if BETA_RELEASE
+        public static readonly bool BetaRelease = true;
+#else
+        public static readonly bool BetaRelease = false;
+#endif
+
+        /// <summary>
+        /// Developer buttons (DEV menu, test meme, teleport, net test panel). On inside the Unity Editor and in
+        /// development builds (menu: Meme Hunter / Build Android APK defines DEV_TOOLS). Never in the beta build.
+        /// </summary>
+#if UNITY_EDITOR || DEV_TOOLS
         public static readonly bool ShowDevTools = true;
 #else
         public static readonly bool ShowDevTools = false;
 #endif
 
         /// <summary>
-        /// Testing: true skips the Terms of use and the Allow geolocation &amp; camera screens (the phone still asks for
-        /// location and camera the moment the game needs them). Set to false for the demo build.
+        /// Beta: skips the Terms of use and the Allow geolocation &amp; camera screens (the phone still asks for
+        /// location and camera the moment the game needs them). Elsewhere (the demo build) they show after registration.
+        /// Declared after BetaRelease on purpose: static fields are initialised in the order they are written.
         /// </summary>
-        public const bool SkipConsentScreens = true;
+        public static readonly bool SkipConsentScreens = BetaRelease;
 
         /// <summary>
         /// false: the AR screen is the viewfinder and Catch takes the photo in the app.
