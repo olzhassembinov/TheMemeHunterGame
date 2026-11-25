@@ -7,8 +7,10 @@ namespace MemeHunter.Editor
 {
     /// <summary>
     /// Builds an APK of the scenes in Build Settings.
-    /// Meme Hunter / Build Android APK: a development build (Builds/MemeHunter.apk), for our own tests.
-    /// Meme Hunter / Build Android APK (beta release): a normal build (Builds/MemeHunter-beta.apk), for the testers.
+    /// Meme Hunter / Build Android APK: a development build (Builds/MemeHunter.apk), for our own tests: the full UI and
+    /// the DEV buttons (defines DEV_TOOLS).
+    /// Meme Hunter / Build Android APK (beta release): a normal build (Builds/MemeHunter-beta.apk), for the testers:
+    /// unfinished features hidden, no DEV buttons (defines BETA_RELEASE, see ApiConfig.BetaRelease).
     /// Batch: Unity -batchmode -quit -projectPath . -buildTarget Android -executeMethod MemeHunter.Editor.AndroidBuild.Run
     /// Then: adb install -r Builds/MemeHunter.apk
     /// </summary>
@@ -18,12 +20,12 @@ namespace MemeHunter.Editor
         const string ReleasePath = "Builds/MemeHunter-beta.apk";
 
         [MenuItem("Meme Hunter/Build Android APK")]
-        public static void Run() => Build(development: true, DevelopmentPath);
+        public static void Run() => Build(development: true, DevelopmentPath, "DEV_TOOLS");
 
         [MenuItem("Meme Hunter/Build Android APK (beta release)")]
-        public static void RunRelease() => Build(development: false, ReleasePath);
+        public static void RunRelease() => Build(development: false, ReleasePath, "BETA_RELEASE");
 
-        static void Build(bool development, string outputPath)
+        static void Build(bool development, string outputPath, string scriptingDefine)
         {
             EditorUserBuildSettings.buildAppBundle = false;
             var options = new BuildPlayerOptions
@@ -31,6 +33,7 @@ namespace MemeHunter.Editor
                 scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
                 locationPathName = outputPath,
                 target = BuildTarget.Android,
+                extraScriptingDefines = new[] { scriptingDefine },
                 options = development ? BuildOptions.Development : BuildOptions.None
             };
             var report = BuildPipeline.BuildPlayer(options);
