@@ -18,8 +18,9 @@ namespace MemeHunter.Net
 
         /// <summary>
         /// The beta build for testers (menu: Meme Hunter / Build Android APK (beta release), which defines BETA_RELEASE):
-        /// features that are not ready for them stay hidden (side/navigation buttons, the leaderboard, the full onboarding
-        /// form, the consent screens). false in the Editor and in development builds: the full UI.
+        /// features that are not ready for them stay hidden (the full onboarding form, the consent screens, Donate, the
+        /// DEV buttons). Profile, Collections, Leaderboard and Boosts are shown: they work with the server.
+        /// false in the Editor and in development builds: the full UI.
         /// readonly, not const: no "unreachable code" warnings where it is used.
         /// </summary>
 #if BETA_RELEASE

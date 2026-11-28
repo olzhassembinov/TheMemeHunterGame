@@ -28,8 +28,11 @@ namespace MemeHunter.UI.Hunt
         const float FrameHalfSize = 0.2f;           // viewport half-size of the target frame (centre ± 0.2)
         const float MenuButtonSize = 62f;
         const float MenuGap = 10f;
-        /// <summary>Beta: the side menu stays hidden and the Back button leads out of the AR screen. Elsewhere the full menu.</summary>
-        static bool SideMenuEnabled => !MemeHunter.Net.ApiConfig.BetaRelease;
+        /// <summary>
+        /// The side menu (Profile, Map, Collections, Leaderboard...). On in every build since those pages work with the
+        /// server; false shows only a Back-to-map button instead.
+        /// </summary>
+        static bool SideMenuEnabled => true;
 
         public event Action CatchRequested;
         public event Action StartHuntRequested;
@@ -313,7 +316,8 @@ namespace MemeHunter.UI.Hunt
                 AddMenuButton("Notifications", theme?.notificationsIcon, () => AppNav.OpenScreen(AppNav.Notifications));
             AddMenuButton("Collections", theme?.collectionIcon, () => AppNav.OpenScreen(AppNav.Collections));
             AddMenuButton("Leaderboard", theme?.leaderboardIcon, () => AppNav.OpenScreen(AppNav.Leaderboard));
-            AddMenuButton("Donate", theme?.donateIcon, () => DonateScreen.Open());
+            if (Features.Donate)
+                AddMenuButton("Donate", theme?.donateIcon, () => DonateScreen.Open());
             AddMenuButton("Menu Toggle", theme?.menuToggleIcon, () => { menuOpenedByPlayer = true; SetMenuOpen(!menuOpen); });
             sideMenu.gameObject.SetActive(SideMenuEnabled);
 

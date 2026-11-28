@@ -14,5 +14,8 @@ namespace MemeHunter
 
         /// <summary>"Price: N$" on the meme card: nothing can be bought with money.</summary>
         public static readonly bool MemePrice = false;
+
+        /// <summary>Donate buttons: donations are not open yet (planned for a later build). Hidden in the beta build.</summary>
+        public static readonly bool Donate = !Net.ApiConfig.BetaRelease;
     }
 }

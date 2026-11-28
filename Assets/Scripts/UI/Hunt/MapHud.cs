@@ -272,10 +272,9 @@ namespace MemeHunter.UI.Hunt
                 AddButton(navGroup, "Notifications", theme?.notificationsIcon, () => AppNav.OpenScreen(AppNav.Notifications));
             AddButton(navGroup, "Collections", theme?.collectionIcon, () => AppNav.OpenScreen(AppNav.Collections));
             AddButton(navGroup, "Leaderboard", theme?.leaderboardIcon, () => AppNav.OpenScreen(AppNav.Leaderboard));
-            AddButton(navGroup, "Donate", theme?.donateIcon, () => DonateScreen.Open());
+            if (Features.Donate)
+                AddButton(navGroup, "Donate", theme?.donateIcon, () => DonateScreen.Open());
             AddButton(navGroup, "Menu Toggle", theme?.menuToggleIcon, ToggleNav);
-            // Beta: the page buttons stay hidden (the Hunt button lives in the direction bar below).
-            navGroup.gameObject.SetActive(!ApiConfig.BetaRelease);
 
             // Direction bar along the bottom edge (drawn last: on top of the map and the dots).
             panel = DirectionPanel.Create(root, OnHuntPressed);
