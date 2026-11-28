@@ -15,6 +15,10 @@ namespace MemeHunter.UI.Hunt
         public static void LocationDenied() =>
             Popup.Show("Location is off", "Meme Hunter needs your location to find memes. Allow it in the phone settings.");
 
+        /// <summary>The claim ran out (30 minutes on the server): the card is free for everyone again.</summary>
+        public static void TimeUp() =>
+            Popup.Show("Time's up!", "The meme ran away: a claimed meme waits only 30 minutes. Start a new hunt to find another one.");
+
         public static void Generic(string details = null) =>
             Popup.Show("Oops, something went wrong", string.IsNullOrEmpty(details) ? "Please try again in a moment." : details);
 

@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using MemeHunter.Game;
+using MemeHunter.Net;
 using MemeHunter.UI.Avatars;
 using MemeHunter.UI.Kit;
 using TMPro;
@@ -16,6 +18,9 @@ namespace MemeHunter.UI.Profile
     /// with the promotion (top 5) and demotion (bottom 3) zones, and the player's own row pinned at the bottom.
     /// ME: the player's card, this week's XP / rank / catches, XP per day, the league goal and all-time records.
     /// The only social list in the game; there are no friends.
+    /// Since the server has a global XP leaderboard (GET /leaderboard) the weekly league is switched off
+    /// (Features.WeeklyLeague) and the same screen shows the server data: GLOBAL = podium, places 4-20 and the
+    /// player's own place pinned at the bottom; ME = rank, XP to the next rank, place, streak and caught cards.
     /// </summary>
     public sealed class LeaderboardScreen : FigmaScreen
     {
@@ -47,10 +52,12 @@ namespace MemeHunter.UI.Profile
         /// <summary>The open page (kept while the app runs). Settable for editor previews.</summary>
         public static Page Shown { get => page; set => page = value; }
 
+        static LeaderboardDto board;          // last server answer, kept while the app runs
+        static bool loadFailed;
+        bool requestedThisVisit;
+
         protected override void Build(RectTransform root)
         {
-            var week = LocalLeague.Current();
-
             var title = Fig.Display(root, "LEADERBOARD", 45f, Fig.MainText);
             title.alignment = TextAlignmentOptions.Center;
             title.enableAutoSizing = true;
@@ -61,11 +68,42 @@ namespace MemeHunter.UI.Profile
             Fig.Line(root, 408f, 52f, 90f, Fig.MainText);
 
             BuildSwitch(root);
-            if (page == Page.Global) BuildGlobal(root, week);
-            else BuildMe(root, week);
-            CloseButton(root);
+            if (Features.WeeklyLeague)
+            {
+                var week = LocalLeague.Current();
+                if (page == Page.Global) BuildGlobal(root, week);
+                else BuildMe(root, week);
+                CloseButton(root);
+                if (Application.isPlaying) StartCoroutine(ShowWeekResultWhenShown());
+                return;
+            }
 
-            if (Application.isPlaying) StartCoroutine(ShowWeekResultWhenShown());
+            if (page == Page.Global) BuildServerGlobal(root);
+            else BuildServerMe(root);
+            CloseButton(root);
+            if (Application.isPlaying && !requestedThisVisit)
+            {
+                requestedThisVisit = true;
+                LoadFromServer();
+            }
+        }
+
+        void OnDisable() => requestedThisVisit = false;
+
+        async void LoadFromServer()
+        {
+            try
+            {
+                board = await Api.GetLeaderboard(Session.HasPlayer ? Session.PlayerId : null, 20);
+                loadFailed = false;
+            }
+            catch (ApiException)
+            {
+                loadFailed = board == null;                                // keep showing the last board offline
+            }
+            await ServerProgress.RefreshPlayer();                          // rank, XP to the next rank, streak (ME page)
+            await ServerProgress.Refresh();                                // caught cards per rarity (ME page)
+            if (this != null && isActiveAndEnabled) Render();
         }
 
         // ---------- ME / GLOBAL switch ----------
@@ -474,6 +512,267 @@ namespace MemeHunter.UI.Profile
         }
 
         static float Fraction(int value, int target) => target <= 0 ? 1f : Mathf.Clamp01(value / (float)target);
+
+        // ---------- Server leaderboard: GLOBAL ----------
+
+        static readonly Color StreakOn = Fig.Hex("FF8A3D");
+
+        void BuildServerGlobal(RectTransform root)
+        {
+            var content = ScrollArea(root, CloseArea + FooterHeight + 10f);
+            var y = 4f;
+            var rows = board?.Top ?? new List<LeaderboardEntryDto>();
+            if (board == null || rows.Count == 0)
+            {
+                var text = board == null
+                    ? (loadFailed ? "Can't load the leaderboard.\nCheck your connection and try again." : "Loading the leaderboard...")
+                    : "No hunters on the board yet.\nCatch a meme and be the first!";
+                var message = Fig.Body(content, text, 17f, Fig.MainText);
+                message.alignment = TextAlignmentOptions.Center;
+                message.rectTransform.At(Side, y + 40f, Width, 60f);
+                y += 120f;
+            }
+            else
+            {
+                y = ServerPodium(content, rows, y) + 12f;
+                foreach (var row in rows.Where(r => r.Position > 3))
+                    y = ServerRow(content, row, y) + 8f;
+            }
+            content.sizeDelta = new Vector2(0f, y + 16f);
+            ServerFooter(root);
+        }
+
+        float ServerPodium(RectTransform content, List<LeaderboardEntryDto> rows, float y)
+        {
+            const float height = 270f;                  // room for the crown above first place
+            // Columns: 2nd (left), 1st (middle), 3rd (right). Block heights make the podium steps.
+            var places = new (int index, float centreX, float avatar, float block, Color medal)[]
+            {
+                (1, 99f, 82f, 56f, Silver),
+                (0, 249f, 102f, 82f, MemeHunterUiColors.LegendaryGold),
+                (2, 399f, 82f, 40f, Bronze),
+            };
+            foreach (var place in places)
+            {
+                if (place.index >= rows.Count) continue;
+                var row = rows[place.index];
+                var me = IsMe(row);
+                var blockTop = y + height - place.block;
+                var blockWidth = place.index == 0 ? 136f : 126f;
+
+                var block = Ui.Rounded("Step " + row.Position, content, place.medal.WithAlpha(0.55f), 16f);
+                block.raycastTarget = false;
+                block.rectTransform.At(place.centreX - blockWidth / 2f, blockTop, blockWidth, place.block);
+                var number = Fig.Display(block.transform, row.Position.ToString(), place.index == 0 ? 40f : 32f, Color.white);
+                number.alignment = TextAlignmentOptions.Center;
+                number.rectTransform.At(0f, 0f, blockWidth, place.block);
+
+                var xp = Fig.Display(content, row.Xp + " XP", 18f, Fig.MainText);
+                xp.alignment = TextAlignmentOptions.Center;
+                xp.rectTransform.At(place.centreX - 70f, blockTop - 25f, 140f, 22f);
+
+                var name = Fig.Body(content, row.DisplayName, 15f, me ? PlayerBorder : Fig.MainText, TextWeight.Bold);
+                name.alignment = TextAlignmentOptions.Center;
+                name.textWrappingMode = TextWrappingModes.NoWrap;
+                name.overflowMode = TextOverflowModes.Ellipsis;
+                name.rectTransform.At(place.centreX - 70f, blockTop - 47f, 140f, 22f);
+
+                var avatarTop = blockTop - 52f - place.avatar;
+                var avatar = Avatar(content, AvatarFor(row), place.avatar, place.medal, place.index == 0 ? 5f : 4f);
+                avatar.At(place.centreX - place.avatar / 2f, avatarTop, place.avatar, place.avatar);
+
+                // Place chip on the avatar's lower right.
+                var chip = Ui.Rounded("Chip", content, place.medal, 14f);
+                chip.raycastTarget = false;
+                chip.rectTransform.At(place.centreX + place.avatar * 0.5f - 24f, avatarTop + place.avatar - 26f, 28f, 28f);
+                var chipText = Fig.Display(chip.transform, row.Position.ToString(), 17f, Color.white);
+                chipText.alignment = TextAlignmentOptions.Center;
+                chipText.rectTransform.Stretch();
+
+                if (place.index == 0) Crown(content, place.centreX, avatarTop - 6f);
+            }
+            return y + height;
+        }
+
+        float ServerRow(RectTransform content, LeaderboardEntryDto row, float y)
+        {
+            var me = IsMe(row);
+            var rect = Row(content, me, y);
+
+            var position = Fig.Display(rect, row.Position.ToString(), 22f, Fig.MainText);
+            position.alignment = TextAlignmentOptions.Center;
+            position.rectTransform.At(6f, 0f, 42f, 60f);
+
+            Avatar(rect, AvatarFor(row), 42f, me ? PlayerBorder : Color.white, 3f).At(52f, 9f, 42f, 42f);
+            NameAndLine(rect, row.DisplayName, $"{Ranks.Name(row.Rank)} · {CardsText(row.Cards)}{(me ? " · you" : string.Empty)}");
+
+            var xp = Fig.Display(rect, row.Xp + " XP", 21f, Fig.MainText);
+            xp.alignment = TextAlignmentOptions.MidlineRight;
+            xp.rectTransform.At(300f, 0f, 146f, 60f);
+            return y + 60f;
+        }
+
+        /// <summary>The player's own place, always visible above the close button, with the XP to the next rank.</summary>
+        static void ServerFooter(RectTransform root)
+        {
+            var me = board?.Me;
+            var card = Ui.BorderedCard("Your Rank", root, PlayerFill, PlayerBorder, 20f, 2.5f);
+            card.AtBottom(Side, 1080f - CloseArea - FooterHeight, Width, FooterHeight);
+            if (me == null)
+            {
+                var hint = Fig.Body(card, Session.HasPlayer ? "Your place appears after the board loads." : "Catch your first meme to join the board!",
+                    15f, Fig.MainText, TextWeight.Bold);
+                hint.alignment = TextAlignmentOptions.Center;
+                hint.rectTransform.Stretch(12f);
+                return;
+            }
+
+            var rank = Fig.Display(card, "#" + me.Position, 24f, Fig.MainText);
+            rank.alignment = TextAlignmentOptions.Center;
+            rank.enableAutoSizing = true;
+            rank.fontSizeMin = 16f;
+            rank.fontSizeMax = 24f;
+            rank.rectTransform.At(6f, 0f, 50f, FooterHeight);
+            Avatar(card, AvatarCatalog.SelectedIndex, 44f, PlayerBorder, 3f).At(58f, 11f, 44f, 44f);
+
+            var name = Fig.Body(card, me.DisplayName, 16f, Fig.MainText, TextWeight.Bold);
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            name.overflowMode = TextOverflowModes.Ellipsis;
+            name.rectTransform.At(112f, 10f, 200f, 22f);
+            var line = Fig.Body(card, NextRankLine(Session.Player, me.Rank), 13f, PromoteInk, TextWeight.Bold);
+            line.textWrappingMode = TextWrappingModes.NoWrap;
+            line.overflowMode = TextOverflowModes.Ellipsis;
+            line.rectTransform.At(112f, 34f, 210f, 20f);
+
+            var xp = Fig.Display(card, me.Xp + " XP", 22f, Fig.MainText);
+            xp.alignment = TextAlignmentOptions.MidlineRight;
+            xp.rectTransform.At(316f, 0f, 132f, FooterHeight);
+        }
+
+        static void NameAndLine(RectTransform rect, string playerName, string detail)
+        {
+            var name = Fig.Body(rect, playerName, 17f, Fig.MainText, TextWeight.Bold);
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            name.overflowMode = TextOverflowModes.Ellipsis;
+            name.rectTransform.At(106f, 9f, 190f, 24f);
+            var line = Fig.Body(rect, detail, 13f, Muted);
+            line.textWrappingMode = TextWrappingModes.NoWrap;
+            line.overflowMode = TextOverflowModes.Ellipsis;
+            line.rectTransform.At(106f, 33f, 190f, 18f);
+        }
+
+        static bool IsMe(LeaderboardEntryDto row) => board?.Me != null && row.Position == board.Me.Position;
+
+        /// <summary>The server has no avatars: the player's own choice, and a face picked from the name for others.</summary>
+        static int AvatarFor(LeaderboardEntryDto row)
+        {
+            if (IsMe(row)) return AvatarCatalog.SelectedIndex;
+            var hash = 17;
+            foreach (var c in row.DisplayName ?? string.Empty) hash = hash * 31 + c;
+            return hash & 0x7fffffff;
+        }
+
+        static string CardsText(int cards) => cards == 1 ? "1 card" : cards + " cards";
+
+        static string NextRankLine(PlayerDto player, string rankId)
+        {
+            if (player == null) return Ranks.Name(rankId);
+            if (player.XpToNextRank == null) return Ranks.Name(player.Rank) + " · top rank";
+            return $"{player.XpToNextRank} XP to {Ranks.NameOf(Ranks.Number(player.Rank) + 1)}";
+        }
+
+        // ---------- Server leaderboard: ME ----------
+
+        void BuildServerMe(RectTransform root)
+        {
+            var content = ScrollArea(root, CloseArea);
+            var player = Session.Player;
+            var me = board?.Me;
+            var y = 4f;
+
+            // Player card.
+            var card = Ui.Rounded("Player", content, CardFill, 26f);
+            card.raycastTarget = false;
+            card.rectTransform.At(Side, y, Width, 150f);
+            Avatar(card.transform, AvatarCatalog.SelectedIndex, 112f, Fig.AvatarRing, 5f).At(18f, 19f, 112f, 112f);
+            var playerName = player != null ? player.DisplayName : me != null ? me.DisplayName : PlayerPrefs.GetString("Nickname", "Hunter");
+            var name = Fig.Display(card.transform, playerName, 32f, Fig.MainText);
+            name.alignment = TextAlignmentOptions.MidlineLeft;
+            name.enableAutoSizing = true;
+            name.fontSizeMin = 20f;
+            name.fontSizeMax = 32f;
+            name.rectTransform.At(148f, 22f, 300f, 40f);
+            var rankId = player != null ? player.Rank : me?.Rank;
+            var place = me != null ? "#" + me.Position : "NOT ON THE BOARD YET";
+            var rankLine = Fig.Body(card.transform, $"{Ranks.Name(rankId).ToUpperInvariant()} · {place}", 15f, Fig.MainText, TextWeight.Bold);
+            rankLine.Tracking(1.2f);
+            rankLine.rectTransform.At(148f, 66f, 300f, 22f);
+            var next = Fig.Body(card.transform, NextRankLine(player, rankId), 15f, Fig.MainText);
+            next.rectTransform.At(148f, 92f, 300f, 22f);
+            y += 162f;
+
+            var cards = ServerProgress.Collection != null ? ServerProgress.Collection.Total : me?.Cards ?? 0;
+            var xp = player != null ? player.Xp : me?.Xp ?? 0;
+            y = Tiles(content, y, ("TOTAL XP", xp.ToString(), Fig.MainText), ("PLACE", me != null ? "#" + me.Position : "—", Fig.MainText),
+                ("CARDS", cards.ToString(), Fig.MainText)) + 12f;
+            y = RankGoal(content, y, player) + 12f;
+
+            var streak = player != null ? player.CurrentStreak : 0;
+            var lit = player != null && player.StreakDoneToday;
+            y = Tiles(content, y, ("DAY STREAK", streak.ToString(), lit ? StreakOn : Fig.MainText),
+                ("FREEZES", $"{(player != null ? player.StreakFreezeCount : 0)}/{BoostShop.MaxFreezes}", Fig.MainText),
+                ("COINS", (player != null ? player.CurrencyBalance : 0).ToString(), Fig.MainText)) + 12f;
+
+            y = Tiles(content, y, ("COMMON", ServerProgress.CountOfRarity("common").ToString(), TierInk(MemeRarity.Common)),
+                ("RARE", ServerProgress.CountOfRarity("rare").ToString(), TierInk(MemeRarity.Rare)),
+                ("EPIC", ServerProgress.CountOfRarity("epic").ToString(), TierInk(MemeRarity.Uncommon)),
+                ("LEGEND", ServerProgress.CountOfRarity("legendary").ToString(), TierInk(MemeRarity.Legendary)));
+            content.sizeDelta = new Vector2(0f, y + 20f);
+        }
+
+        /// <summary>How far the next rank is (style of the league goal card).</summary>
+        static float RankGoal(RectTransform content, float y, PlayerDto player)
+        {
+            string message;
+            float fill;
+            if (player == null)
+            {
+                message = "Catch memes to earn XP and climb the ranks.";
+                fill = 0f;
+            }
+            else if (player.XpToNextRank == null)
+            {
+                message = $"You reached the top rank, {Ranks.Name(player.Rank)}! Keep hunting to stay on top of the board.";
+                fill = 1f;
+            }
+            else
+            {
+                var (current, needed) = Ranks.Progress(player);
+                message = $"Earn {player.XpToNextRank} more XP to reach {Ranks.NameOf(Ranks.Number(player.Rank) + 1)}.";
+                fill = Fraction(current, needed);
+            }
+
+            var card = Ui.Rounded("Rank Goal", content, CardFill, 24f);
+            card.raycastTarget = false;
+            card.rectTransform.At(Side, y, Width, 124f);
+            var title = Fig.Body(card.transform, "NEXT RANK", 13f, Muted, TextWeight.Bold);
+            title.Tracking(1.4f);
+            title.rectTransform.At(20f, 14f, 300f, 18f);
+            var text = Fig.Body(card.transform, message, 16f, Fig.MainText);
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 12f;
+            text.fontSizeMax = 16f;
+            text.rectTransform.At(20f, 36f, Width - 40f, 46f);
+
+            var track = Ui.Rounded("Track", card.transform, Fig.XpTrack.WithAlpha(0.45f), 6f);
+            track.raycastTarget = false;
+            track.rectTransform.At(20f, 94f, Width - 40f, 12f);
+            var bar = Ui.Rounded("Fill", card.transform, Color.white, 6f);
+            bar.raycastTarget = false;
+            bar.gameObject.AddComponent<HorizontalGradientEffect>().SetColors(Fig.XpFrom, Fig.XpTo);
+            bar.rectTransform.At(20f, 94f, Mathf.Max(12f, (Width - 40f) * fill), 12f);
+            return y + 124f;
+        }
 
         // ---------- Shared pieces ----------
 

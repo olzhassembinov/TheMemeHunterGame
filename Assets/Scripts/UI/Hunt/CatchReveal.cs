@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using MemeHunter.Game;
+using MemeHunter.Net;
 using MemeHunter.UI.Kit;
 using TMPro;
 using UnityEngine;
@@ -10,21 +11,45 @@ namespace MemeHunter.UI.Hunt
     /// <summary>
     /// "Meme caught!" popup with a card-flip reveal: the card back (navy, MH) turns over to the meme card
     /// (art, name, rarity in its colour, glow in the rarity colour), then the coin / XP rewards.
-    /// Rewards are instant: never "pending".
+    /// Rewards are instant: never "pending". Real catches show what the server credited (ShowServer):
+    /// coins, XP with the booster, the daily streak and a rank-up.
     /// </summary>
     public static class CatchReveal
     {
         const float CardWidth = 220f;
         const float CardHeight = 300f;
 
+        /// <summary>A real catch: the rewards come from the submission answer; `before` is the profile before the catch.</summary>
+        public static Popup ShowServer(string cardId, string serverRarity, SubmissionResultDto result, PlayerDto before, Action onClosed = null)
+        {
+            var rewards = $"+{result.Reward} coins   +{result.Xp} XP";
+            if (before != null && before.BoosterActive) rewards += $" (x{before.Booster.Multiplier} boost)";
+            if (result.Streak > 0)
+            {
+                var days = result.Streak == 1 ? "1 day" : result.Streak + " days";
+                rewards += before != null && !before.StreakDoneToday ? $"\nStreak: {days}! Come back tomorrow." : $"\nStreak: {days}";
+            }
+            if (before != null)
+            {
+                var newRank = Ranks.NumberForXp(before.Xp + result.Xp);
+                if (newRank > Ranks.Number(before.Rank)) rewards += $"\nRank up! New rank: {Ranks.NameOf(newRank)}.";
+            }
+            return Build(MemeCatalog.ForCard(cardId, serverRarity), serverRarity, rewards, onClosed);
+        }
+
+        /// <summary>The DEV test meme and the editor previews: rewards counted on the phone.</summary>
         public static Popup Show(PlayerProgress.CatchResult result, string serverRarity, int coins, Action onClosed = null)
         {
-            var rarity = Rarity.Parse(serverRarity);
-            var color = Rarity.ColorOf(rarity);
-
             var rewards = $"+{coins} coins   +{result.XpGained} XP";
             if (result.IsDuplicate) rewards += "\nYou already had it: turned into coins!";
             if (result.LeveledUp) rewards += $"\nLevel up! You are now level {PlayerProgress.Level}.";
+            return Build(result.Meme, serverRarity, rewards, onClosed);
+        }
+
+        static Popup Build(MemeData meme, string serverRarity, string rewards, Action onClosed)
+        {
+            var rarity = Rarity.Parse(serverRarity);
+            var color = Rarity.ColorOf(rarity);
 
             var popup = Popup.Create("Meme caught!", rewards, CardHeight + 30f, onClosed);
             popup.Content.SetSiblingIndex(popup.Body.transform.GetSiblingIndex());   // the card first, rewards under it
@@ -38,9 +63,9 @@ namespace MemeHunter.UI.Hunt
             // Front: the meme card (Figma collection card style).
             var front = Ui.BorderedCard("Front", stage, new Color32(168, 216, 255, 255), color, 26f, 4f);
             front.Stretch();
-            var art = Ui.CroppedPicture("Art", front, result.Meme != null ? result.Meme.Artwork : null, 16f);
+            var art = Ui.CroppedPicture("Art", front, meme != null ? meme.Artwork : null, 16f);
             art.Place(new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(CardWidth - 28f, CardHeight * 0.58f));
-            var title = Ui.Text("Name", front, result.Meme != null ? result.Meme.DisplayName : "MEME", 26f,
+            var title = Ui.Text("Name", front, meme != null ? meme.DisplayName : "MEME", 26f,
                 MemeHunterUiColors.DarkNavy, display: true);
             title.rectTransform.Place(new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(CardWidth - 20f, 40f));
             title.textWrappingMode = TextWrappingModes.NoWrap;

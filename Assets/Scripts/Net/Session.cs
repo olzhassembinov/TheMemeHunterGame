@@ -33,6 +33,7 @@ namespace MemeHunter.Net
         /// <summary>Call after every successful GetPlayer: updates the cached copy.</summary>
         public static void SetPlayer(PlayerDto player)
         {
+            if (player != null) player.ReceivedAt = Time.realtimeSinceStartup;   // the booster timer counts from here
             Player = player;
             PlayerChanged?.Invoke(player);
         }
@@ -55,6 +56,24 @@ namespace MemeHunter.Net
             PlayerPrefs.Save();
         }
 
+        /// <summary>Time left on the claim (30 minutes on the server), or null if unknown (hunt saved by an older build).</summary>
+        public static TimeSpan? HuntTimeLeft(ClaimDto hunt) =>
+            hunt?.ExpiresAt == null ? (TimeSpan?)null : hunt.ExpiresAt.Value.ToUniversalTime() - DateTime.UtcNow;
+
+        /// <summary>True once the claim has run out: the server has already given the card back to everyone.</summary>
+        public static bool HuntExpired(ClaimDto hunt)
+        {
+            var left = HuntTimeLeft(hunt);
+            return left.HasValue && left.Value <= TimeSpan.Zero;
+        }
+
+        /// <summary>"24:31" (minutes:seconds) for the hunt timers.</summary>
+        public static string FormatTimeLeft(TimeSpan left)
+        {
+            if (left < TimeSpan.Zero) left = TimeSpan.Zero;
+            return $"{(int)left.TotalMinutes:00}:{left.Seconds:00}";
+        }
+
         public static void ClearHunt()
         {
             PlayerPrefs.DeleteKey(HuntKey);
@@ -68,6 +87,7 @@ namespace MemeHunter.Net
             PlayerPrefs.DeleteKey(PlayerIdKey);
             PlayerPrefs.Save();
             Player = null;
+            MemeHunter.Game.ServerProgress.Forget();     // the collection belonged to the forgotten player
         }
     }
 }

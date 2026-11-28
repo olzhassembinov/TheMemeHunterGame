@@ -38,6 +38,7 @@ namespace MemeHunter.UI.Hunt
         double distanceM = -1;
         string rarity;
         string busyMessage;
+        TimeSpan? timeLeft;                     // the claim's countdown (null: none / unknown)
 
         // Built UI
         FogGraphic fog;
@@ -93,7 +94,10 @@ namespace MemeHunter.UI.Hunt
 
         /// <summary>Where the meme is: drives the navigation compass while walking.</summary>
         public void SetTarget(double lat, double lng) { hasTarget = true; targetLat = lat; targetLng = lng; Refresh(); }
-        public void ClearTarget() { hasTarget = false; Refresh(); }
+        public void ClearTarget() { hasTarget = false; timeLeft = null; Refresh(); }
+
+        /// <summary>Time left on the claimed meme (30 minutes on the server); null hides the timer.</summary>
+        public void SetTimeLeft(TimeSpan? left) { timeLeft = left; Refresh(); }
 
         /// <summary>Shows a message in the narrative box and blocks the buttons (e.g. "Sending photo..."); null clears it.</summary>
         public void SetBusy(string message) { busyMessage = message; Refresh(); }
@@ -190,13 +194,21 @@ namespace MemeHunter.UI.Hunt
             switch (phase)
             {
                 case HuntPhase.Searching: return "Looking for memes nearby...";
-                case HuntPhase.Walking: return $"{name} is hiding nearby. Get closer!";
+                case HuntPhase.Walking: return $"{name} is hiding nearby. Get closer!" + TimerLine();
                 case HuntPhase.Near:
-                    if (!MemeInFrame) return "It's here! Turn around and follow the arrow.";
-                    if (!IsSteady) return "Hold still...";
-                    return "Got it! Tap Catch!";
+                    if (!MemeInFrame) return "It's here! Turn around and follow the arrow." + TimerLine();
+                    if (!IsSteady) return "Hold still..." + TimerLine();
+                    return "Got it! Tap Catch!" + TimerLine();
                 default: return "Tap Start hunt to look for memes around you.";
             }
+        }
+
+        /// <summary>Second line of the narrative box: the claim's countdown, red in the last 5 minutes.</summary>
+        string TimerLine()
+        {
+            if (!timeLeft.HasValue) return string.Empty;
+            var text = "Time left " + MemeHunter.Net.Session.FormatTimeLeft(timeLeft.Value);
+            return timeLeft.Value.TotalMinutes < 5 ? $"\n<size=80%><color=#FF8A8A>{text}</color></size>" : $"\n<size=80%>{text}</size>";
         }
 
         float FogDensity()
@@ -297,7 +309,8 @@ namespace MemeHunter.UI.Hunt
 
             AddMenuButton("Profile", theme?.profileIcon, () => AppNav.OpenScreen(AppNav.Profile));
             AddMenuButton("Map", theme?.mapIcon, () => AppNav.OpenScreen(AppNav.Map));
-            AddMenuButton("Notifications", theme?.notificationsIcon, () => AppNav.OpenScreen(AppNav.Notifications));
+            if (Features.Notifications)                                    // sample messages only: no server notifications yet
+                AddMenuButton("Notifications", theme?.notificationsIcon, () => AppNav.OpenScreen(AppNav.Notifications));
             AddMenuButton("Collections", theme?.collectionIcon, () => AppNav.OpenScreen(AppNav.Collections));
             AddMenuButton("Leaderboard", theme?.leaderboardIcon, () => AppNav.OpenScreen(AppNav.Leaderboard));
             AddMenuButton("Donate", theme?.donateIcon, () => DonateScreen.Open());

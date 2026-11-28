@@ -1,4 +1,5 @@
 using System.Linq;
+using MemeHunter.Game;
 using MemeHunter.UI.Kit;
 using TMPro;
 using UnityEngine;
@@ -10,6 +11,8 @@ namespace MemeHunter.UI.Profile
     /// Figma "Collections" (203:4): COLLECTIONS header, four rarity filters (the chosen one gets the dashed ring),
     /// and a scrolling 2-column grid of meme tiles. Filtering rebuilds the grid, so the remaining memes move up
     /// and fill the space (no gaps). Uncaught memes are silhouettes; dashed slots fill the last rows.
+    /// What the player caught comes from the server collection (refreshed each time the page opens).
+    /// Filters go by value like the server: Common, Rare, Epic, Legendary.
     /// </summary>
     public sealed class CollectionScreen : FigmaScreen
     {
@@ -37,7 +40,16 @@ namespace MemeHunter.UI.Profile
             BuildGrid(root);
             CloseButton(root);
             Populate();
+
+            if (!Application.isPlaying) return;
+            ServerProgress.Changed -= OnCollectionChanged;
+            ServerProgress.Changed += OnCollectionChanged;
+            _ = ServerProgress.Refresh();                                  // redraws through Changed when it arrives
         }
+
+        void OnCollectionChanged() { if (isActiveAndEnabled && grid != null) Populate(); }
+
+        void OnDisable() => ServerProgress.Changed -= OnCollectionChanged;
 
         // ---------- Rarity filters ----------
 
@@ -52,8 +64,8 @@ namespace MemeHunter.UI.Profile
             var items = new (MemeRarity rarity, string label, float x, Sprite sprite, float glowScale, float labelSize)[]
             {
                 (MemeRarity.Common, "Common", 26f, theme?.rarityCommon, 1f, 15f),
-                (MemeRarity.Uncommon, "Uncommon", 156.9f, theme?.rarityUncommon, 1f, 15f),
-                (MemeRarity.Rare, "Rare", 288.8f, theme?.rarityRare, 1.138f, 15f),
+                (MemeRarity.Rare, "Rare", 156.9f, theme?.rarityRare, 1.138f, 15f),
+                (MemeRarity.Uncommon, "Epic", 288.8f, theme?.rarityUncommon, 1f, 15f),   // the server's epic
                 (MemeRarity.Legendary, "Legend", 414f, theme?.rarityLegendary, 1.276f, 20f),
             };
 
@@ -74,11 +86,11 @@ namespace MemeHunter.UI.Profile
                 var size = 58f * item.glowScale;
                 var circle = Ui.Image("Circle", root, item.sprite);
                 circle.rectTransform.At(item.x + 29f - size / 2f, 92f + 29f - size / 2f, size, size);
-                filterCircles[i] = Ui.Rect("Centre", root).At(item.x, 92f, 58f, 58f);
+                filterCircles[(int)item.rarity] = Ui.Rect("Centre", root).At(item.x, 92f, 58f, 58f);   // indexed by rarity, not position
 
                 var label = Fig.Display(root, item.label, item.labelSize, color);
                 label.alignment = TextAlignmentOptions.Center;
-                if (item.rarity >= MemeRarity.Rare) label.Glow(item.rarity == MemeRarity.Rare ? Fig.Hex("A17BFF") : color);
+                if (Rarity.Order(item.rarity) >= 1) label.Glow(item.rarity == MemeRarity.Rare ? Fig.Hex("A17BFF") : color);
                 label.rectTransform.At(item.x - 10f, 152f, 78f, 22f);
             }
         }

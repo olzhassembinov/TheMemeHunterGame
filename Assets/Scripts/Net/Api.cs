@@ -82,9 +82,50 @@ namespace MemeHunter.Net
             return await Send<SubmissionResultDto>(req, ApiConfig.SubmitTimeoutSeconds);
         }
 
+        public static async Awaitable<PlayerDto> BuyXpBooster(string playerId, int multiplier)
+        {
+            // JSON body: {"multiplier": 2} or 5. Answers with the whole updated profile.
+            var body = JsonConvert.SerializeObject(new { multiplier });
+            return await Send<PlayerDto>(PostJson("/players/" + playerId + "/boosters/xp", body), ApiConfig.DefaultTimeoutSeconds);
+        }
+
+        public static async Awaitable<PlayerDto> BuyStreakFreeze(string playerId)
+        {
+            // No body. Answers with the whole updated profile.
+            return await Send<PlayerDto>(PostJson("/players/" + playerId + "/streak-freeze/buy", null), ApiConfig.DefaultTimeoutSeconds);
+        }
+
+        public static async Awaitable<CollectionDto> GetCollection(string playerId)
+        {
+            var req = UnityWebRequest.Get(ApiConfig.BaseUrl + "/players/" + playerId + "/collection");
+            return await Send<CollectionDto>(req, ApiConfig.DefaultTimeoutSeconds);
+        }
+
+        public static async Awaitable<LeaderboardDto> GetLeaderboard(string playerId, int limit = 20)
+        {
+            var url = ApiConfig.BaseUrl + "/leaderboard?limit=" + limit;
+            if (!string.IsNullOrEmpty(playerId)) url += "&player_id=" + playerId;
+            return await Send<LeaderboardDto>(UnityWebRequest.Get(url), ApiConfig.DefaultTimeoutSeconds);
+        }
+
         // ---------- Plumbing ----------
 
         static string Num(double value) => value.ToString("F6", CultureInfo.InvariantCulture);
+
+        /// <summary>POST to a path with an optional JSON body (null = no body).</summary>
+        static UnityWebRequest PostJson(string path, string json)
+        {
+            var req = new UnityWebRequest(ApiConfig.BaseUrl + path, UnityWebRequest.kHttpVerbPOST)
+            {
+                downloadHandler = new DownloadHandlerBuffer()
+            };
+            if (json != null)
+            {
+                req.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
+                req.SetRequestHeader("Content-Type", "application/json");
+            }
+            return req;
+        }
 
         static async Awaitable<T> Send<T>(UnityWebRequest req, int timeoutSeconds)
         {

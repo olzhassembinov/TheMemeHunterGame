@@ -63,6 +63,12 @@ namespace MemeHunter.Game
             hud.StartHuntRequested += StartHunt;
 
             hunt = Session.ActiveHunt;                      // resume a hunt after restarting the app
+            if (hunt != null && Session.HuntExpired(hunt))  // the 30 minutes ran out while the app was closed
+            {
+                Session.ClearHunt();
+                hunt = null;
+                HuntErrors.TimeUp();
+            }
             if (hunt == null)
             {
                 hud.SetPhase(HuntPhase.NoHunt);
@@ -85,6 +91,9 @@ namespace MemeHunter.Game
         {
             if (hunt == null || busy || Time.unscaledTime < nextCheck) return;
             nextCheck = Time.unscaledTime + 0.5f;
+
+            if (Session.HuntExpired(hunt)) { ExpireHunt(); return; }
+            hud.SetTimeLeft(Session.HuntTimeLeft(hunt));
 
             if (!Geo.TryGetFix(out var fix)) return;
             lastDistanceM = Geo.DistanceMeters(fix.Lat, fix.Lng, hunt.Lat, hunt.Lng);
@@ -242,11 +251,19 @@ namespace MemeHunter.Game
             hud.SetPhase(HuntPhase.NoHunt);
         }
 
+        /// <summary>The claim ran out (30 minutes): the server gave the card back to everyone.</summary>
+        void ExpireHunt()
+        {
+            CancelHunt();
+            HuntErrors.TimeUp();
+        }
+
         // ---------- Catch: photo -> upload -> reveal ----------
 
         async void OnCatchPressed()
         {
             if (busy || hunt == null) return;
+            if (Session.HuntExpired(hunt)) { ExpireHunt(); return; }
 
             // Position at the moment of pressing (before the photo is taken).
             if (!Geo.TryGetFix(out var fix))
@@ -295,9 +312,10 @@ namespace MemeHunter.Game
                     hud.ClearTarget();
                     hud.SetPhase(HuntPhase.NoHunt);
 
-                    var progress = PlayerProgress.RecordCatch(caught.CardId, caught.Rarity);
-                    CatchReveal.Show(progress, caught.Rarity, result.Reward, GoToMap);
-                    await RefreshPlayer();                    // new coin balance for Profile
+                    PlayerProgress.RecordCatch(caught.CardId, caught.Rarity);   // the phone's own record (fallback, simulations)
+                    CatchReveal.ShowServer(caught.CardId, caught.Rarity, result, Session.Player, GoToMap);
+                    await RefreshPlayer();                    // new coins, XP, rank, streak for Profile
+                    _ = ServerProgress.Refresh();             // the new card in the collection
                 }
                 else
                 {
@@ -307,7 +325,12 @@ namespace MemeHunter.Game
             }
             catch (ApiException e)
             {
-                if (e.StatusCode == 404)
+                if (e.StatusCode == 400 && e.Message.IndexOf("claimed by this player", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    // The claim ran out (or the server released the card): this photo can no longer count.
+                    ExpireHunt();
+                }
+                else if (e.StatusCode == 404)
                 {
                     // The server does not know this player or card any more (database reset): this hunt can never finish.
                     if (e.Message.IndexOf("player", StringComparison.OrdinalIgnoreCase) >= 0) Session.Clear();

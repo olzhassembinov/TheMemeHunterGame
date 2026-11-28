@@ -60,7 +60,12 @@ namespace MemeHunter.UI.Profile
             name.rectTransform.At(58f, 572f, 383f, 56f);
 
             Row(root, "Rarity:", Rarity.Name(meme.Rarity).ToUpperInvariant(), 636f, color);
-            Row(root, "Price:", meme.Price + "$", 671f, color);
+            if (Features.MemePrice) Row(root, "Price:", meme.Price + "$", 671f, color);
+            else
+            {
+                var caught = ProfileSection.Count(meme);
+                Row(root, "Caught:", caught == 1 ? "1 TIME" : caught + " TIMES", 671f, color);
+            }
 
             // Description: Anuphan 18, first line indented like the Figma text.
             var description = Fig.Body(root, "<space=48>" + meme.Description, 18f, Fig.MainText);

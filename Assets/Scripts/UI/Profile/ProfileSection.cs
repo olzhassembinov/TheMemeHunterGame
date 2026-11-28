@@ -100,9 +100,14 @@ namespace MemeHunter.UI.Profile
 
         /// <summary>All catalog memes, rarest first (Figma shows legendaries at the top).</summary>
         public static IEnumerable<MemeData> CatalogRarestFirst() =>
-            MemeCatalog.All.OrderByDescending(m => m.Rarity).ThenBy(m => m.DisplayName);
+            MemeCatalog.All.OrderByDescending(m => Rarity.Order(m.Rarity)).ThenBy(m => m.DisplayName);
 
-        public static int Count(MemeData meme) => PlayerProgress.CountOf(meme.MemeId);
+        /// <summary>
+        /// How many times the player caught this meme: from the server collection once it was downloaded on this
+        /// phone, otherwise from the phone's own record (editor previews, DEV test memes).
+        /// </summary>
+        public static int Count(MemeData meme) =>
+            ServerProgress.HasCollection ? ServerProgress.CountOf(meme.MemeId) : PlayerProgress.CountOf(meme.MemeId);
     }
 
     /// <summary>A code-built screen that rebuilds its content each time it becomes visible (fresh data).</summary>

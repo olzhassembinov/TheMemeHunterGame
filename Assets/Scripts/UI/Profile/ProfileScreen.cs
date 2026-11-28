@@ -11,17 +11,26 @@ namespace MemeHunter.UI.Profile
 {
     /// <summary>
     /// Figma "Profile" (158:15), without the I AM / MY FRIENDS / GLOBAL tabs (no social features):
-    /// avatar circle, nickname, age + city, level, XP bar, coins, BEST MEME CARDS (2x2), close button.
+    /// avatar circle, nickname, age + city, rank, XP bar, coins, daily streak and streak freezes, the XP booster
+    /// with its timer and the BOOSTS shop button, BEST MEME CARDS (2x2), close button.
+    /// Rank, XP, coins, streak and booster come from the server profile; the cards from the server collection.
     /// </summary>
     public sealed class ProfileScreen : FigmaScreen
     {
-        TextMeshProUGUI coinsText;
+        static readonly Color StreakOn = Fig.Hex("FF8A3D");     // today's photo is done: the flame is lit
+        static readonly Color StreakOff = Fig.SubText;          // grey until today's photo
+        static readonly Color FreezeFill = Fig.AvatarRing;
+        static readonly Color Muted = Fig.MainText.WithAlpha(0.6f);
+
+        bool refreshedThisVisit;                                // one server refresh each time the page is opened
+        TextMeshProUGUI boosterText;
 
         protected override void Build(RectTransform root)
         {
+            var player = Session.Player;
             BuildAvatar(root);
 
-            var nickname = Fig.Display(root, PlayerPrefs.GetString("Nickname", "Hunter"), 40f, Fig.MainText);
+            var nickname = Fig.Display(root, Nickname(player), 40f, Fig.MainText);
             nickname.alignment = TextAlignmentOptions.MidlineLeft;
             nickname.enableAutoSizing = true;
             nickname.fontSizeMin = 22f;
@@ -32,16 +41,21 @@ namespace MemeHunter.UI.Profile
             subtitle.alignment = TextAlignmentOptions.MidlineLeft;
             subtitle.rectTransform.At(225f, 127f, 258f, 24f);
 
-            // Level: big Jaro number + "LEVEL".
-            var level = Fig.Display(root, PlayerProgress.Level.ToString(), 65f, Fig.MainText);
+            // Rank: big Jaro number + the rank name (the server sends rank_1 .. rank_5, names in Ranks).
+            var rankId = player != null ? player.Rank : null;
+            var level = Fig.Display(root, Ranks.Number(rankId).ToString(), 65f, Fig.MainText);
             level.alignment = TextAlignmentOptions.MidlineLeft;
             level.rectTransform.At(225f, 145f, 60f, 72f);
-            var levelLabel = Fig.Body(root, "LEVEL", 15f, Fig.MainText, TextWeight.Light);
-            levelLabel.alignment = TextAlignmentOptions.Center;
-            levelLabel.rectTransform.At(283f, 186f, 49f, 20f);
+            var levelLabel = Fig.Body(root, Ranks.Name(rankId).ToUpperInvariant(), 15f, Fig.MainText, TextWeight.Light);
+            levelLabel.alignment = TextAlignmentOptions.MidlineLeft;
+            levelLabel.enableAutoSizing = true;
+            levelLabel.fontSizeMin = 11f;
+            levelLabel.fontSizeMax = 15f;
+            levelLabel.rectTransform.At(283f, 186f, 100f, 20f);
 
-            // XP bar: teal track 199x9, blue gradient fill.
-            var (current, needed) = PlayerProgress.LevelProgress();
+            // XP bar: teal track 199x9, blue gradient fill. XP inside the current rank.
+            var (current, needed) = Ranks.Progress(player);
+            var topRank = player != null && player.XpToNextRank == null;
             var track = Ui.Rounded("XP Track", root, Fig.XpTrack, 4.5f);
             track.raycastTarget = false;
             track.rectTransform.At(283f, 162f, 199f, 9f);
@@ -50,16 +64,23 @@ namespace MemeHunter.UI.Profile
             fill.gameObject.AddComponent<HorizontalGradientEffect>().SetColors(Fig.XpFrom, Fig.XpTo);
             fill.rectTransform.At(283f, 162f, Mathf.Max(9f, 199f * current / Mathf.Max(1, needed)), 9f);
 
-            var xp = Fig.Body(root, $"{current}<color=#A6AED7>/{needed}</color>", 18f, Fig.MainText, TextWeight.Bold);
+            var xpLine = topRank ? $"{player.Xp} XP" : $"{current}<color=#A6AED7>/{needed}</color>";
+            var xp = Fig.Body(root, xpLine, 18f, Fig.MainText, TextWeight.Bold);
             xp.alignment = TextAlignmentOptions.MidlineRight;
-            xp.rectTransform.At(331f, 184f, 150f, 20f);
+            xp.enableAutoSizing = true;
+            xp.fontSizeMin = 12f;
+            xp.fontSizeMax = 18f;
+            xp.rectTransform.At(383f, 184f, 99f, 20f);
 
             // Coins (Score = coins) with the coin icon.
-            coinsText = Fig.Display(root, Coins(), 18f, Fig.MainText);
+            var coinsText = Fig.Display(root, player != null ? player.CurrencyBalance.ToString() : "0", 18f, Fig.MainText);
             coinsText.alignment = TextAlignmentOptions.MidlineRight;
             coinsText.rectTransform.At(330f, 219f, 118.7f, 20f);
             var theme = UiTheme.Get();
             Ui.Image("Coin", root, theme != null ? theme.coinIcon : null).rectTransform.At(462.2f, 219f, 19.4f, 19.4f);
+
+            BuildStreak(root, player);
+            BuildBooster(root, player);
 
             // BEST MEME CARDS header with its two lines.
             Fig.Line(root, 18f, 321f, 138f, Fig.SubText);
@@ -90,15 +111,93 @@ namespace MemeHunter.UI.Profile
 
             CloseButton(root);
 
+            if (!Application.isPlaying) return;
             Session.PlayerChanged -= OnPlayerChanged;
             Session.PlayerChanged += OnPlayerChanged;
-            if (Application.isPlaying) RefreshCoins();
-            if (Application.isPlaying && !AvatarCatalog.HasChoice) StartCoroutine(AskForAvatarWhenShown());
+            ServerProgress.Changed -= OnCollectionChanged;
+            ServerProgress.Changed += OnCollectionChanged;
+            if (!refreshedThisVisit)
+            {
+                refreshedThisVisit = true;
+                RefreshFromServer();
+                if (!AvatarCatalog.HasChoice) StartCoroutine(AskForAvatarWhenShown());
+            }
         }
+
+        // ---------- Streak and booster (new: server profile) ----------
+
+        /// <summary>Daily streak pill (orange once today's photo is done, grey until then) and the freezes held.</summary>
+        void BuildStreak(RectTransform root, PlayerDto player)
+        {
+            var streak = player != null ? player.CurrentStreak : 0;
+            var done = player != null && player.StreakDoneToday;
+            var label = streak > 0 ? $"{streak} DAY STREAK" : "NO STREAK YET";
+            var pill = Pill(root, "Streak", done ? StreakOn : StreakOff, label);
+            pill.At(225f, 246f, 132f, 28f);
+
+            var freezes = player != null ? player.StreakFreezeCount : 0;
+            var freeze = Pill(root, "Freezes", FreezeFill, $"FREEZE {freezes}/{BoostShop.MaxFreezes}");
+            freeze.At(363f, 246f, 119f, 28f);
+        }
+
+        /// <summary>The active XP booster with its countdown, and the BOOSTS button that opens the shop.</summary>
+        void BuildBooster(RectTransform root, PlayerDto player)
+        {
+            boosterText = Fig.Body(root, BoosterLine(player), 15f, Muted, TextWeight.Bold);
+            boosterText.alignment = TextAlignmentOptions.MidlineLeft;
+            boosterText.enableAutoSizing = true;
+            boosterText.fontSizeMin = 11f;
+            boosterText.fontSizeMax = 15f;
+            boosterText.rectTransform.At(18f, 281f, 340f, 24f);
+
+            var shop = Ui.PillButton("Boosts", root, "BOOSTS", BoostShop.Open, 17f);
+            ((RectTransform)shop.transform).At(370f, 278f, 112f, 30f);
+        }
+
+        RectTransform Pill(RectTransform root, string name, Color color, string label)
+        {
+            var pill = Ui.Rounded(name, root, color, 14f);
+            var button = pill.gameObject.AddComponent<Button>();
+            button.targetGraphic = pill;
+            button.onClick.AddListener(BoostShop.Open);                  // streak and freezes are bought in the shop
+            var text = Fig.Body(pill.transform, label, 13f, Color.white, TextWeight.Bold);
+            text.alignment = TextAlignmentOptions.Center;
+            text.Tracking(0.8f);
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.rectTransform.Stretch(4f);
+            return pill.rectTransform;
+        }
+
+        static string BoosterLine(PlayerDto player)
+        {
+            if (player == null || !player.BoosterActive) return "No XP boost active";
+            var left = System.TimeSpan.FromSeconds(player.BoosterSecondsLeft);
+            return $"<color=#0099FF>XP BOOST x{player.Booster.Multiplier}</color> · {(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00} left";
+        }
+
+        void Update()
+        {
+            // The booster countdown ticks on the phone (from the server's seconds_left).
+            if (boosterText != null && Session.Player != null && Session.Player.BoosterActive)
+                boosterText.text = BoosterLine(Session.Player);
+        }
+
+        // ---------- Server data ----------
+
+        async void RefreshFromServer()
+        {
+            await ServerProgress.RefreshPlayer();                         // coins, rank, XP, streak, booster
+            await ServerProgress.Refresh();                               // the caught cards (BEST MEME CARDS)
+        }
+
+        void OnPlayerChanged(PlayerDto _) { if (isActiveAndEnabled) Render(); }
+        void OnCollectionChanged() { if (isActiveAndEnabled) Render(); }
 
         void OnDisable()
         {
             Session.PlayerChanged -= OnPlayerChanged;
+            ServerProgress.Changed -= OnCollectionChanged;
+            refreshedThisVisit = false;
             AvatarPicker.Close();                                           // leaving Profile: no picker over another page
         }
 
@@ -111,19 +210,11 @@ namespace MemeHunter.UI.Profile
             yield return null;
             if (isActiveAndEnabled && !AvatarCatalog.HasChoice) AvatarPicker.Open(Rebuild);
         }
-        void OnPlayerChanged(PlayerDto _) { if (coinsText != null) coinsText.text = Coins(); }
 
         void Rebuild()
         {
             gameObject.SetActive(false);                                    // OnEnable rebuilds with fresh data
             gameObject.SetActive(true);
-        }
-
-        async void RefreshCoins()
-        {
-            if (!Session.HasPlayer) return;
-            try { Session.SetPlayer(await Api.GetPlayer(Session.PlayerId)); }
-            catch (ApiException) { /* offline: keep the last known balance */ }
         }
 
         void BuildAvatar(RectTransform root)
@@ -147,6 +238,9 @@ namespace MemeHunter.UI.Profile
             button.onClick.AddListener(() => AvatarPicker.Open(Rebuild));
         }
 
+        static string Nickname(PlayerDto player) =>
+            player != null && !string.IsNullOrEmpty(player.DisplayName) ? player.DisplayName : PlayerPrefs.GetString("Nickname", "Hunter");
+
         static string Subtitle()
         {
             if (!PlayerPrefs.HasKey("Year")) return PlayerPrefs.GetString("City", string.Empty);
@@ -156,7 +250,5 @@ namespace MemeHunter.UI.Profile
             if (today.Month < month || (today.Month == month && today.Day < PlayerPrefs.GetInt("Day", 1))) age--;
             return $"Age {Mathf.Max(0, age)}, {PlayerPrefs.GetString("City", string.Empty)}";
         }
-
-        static string Coins() => Session.Player != null ? Session.Player.CurrencyBalance.ToString() : "0";
     }
 }

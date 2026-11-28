@@ -120,6 +120,12 @@ namespace MemeHunter.UI.Hunt
             playerDot.anchoredPosition = map.Project(fixLat, fixLng);      // moves off-centre when the map is dragged
 
             var hunt = Session.ActiveHunt;
+            if (hunt != null && Session.HuntExpired(hunt))                 // the 30 minutes ran out: the card is free again
+            {
+                Session.ClearHunt();
+                hunt = null;
+                if (allowPopup) HuntErrors.TimeUp();
+            }
             var shown = 0;
             nearestM = -1;
             NearbyCardDto nearest = null;
@@ -146,7 +152,9 @@ namespace MemeHunter.UI.Hunt
             if (hunt != null)
             {
                 panel.SetTarget(hunt.Lat, hunt.Lng);
-                panel.Show("YOUR MEME · " + RarityName(hunt.Rarity), Rarity.ColorOf(hunt.Rarity), FormatDistance(nearestM));
+                var left = Session.HuntTimeLeft(hunt);
+                var what = "YOUR MEME · " + RarityName(hunt.Rarity) + (left.HasValue ? " · " + Session.FormatTimeLeft(left.Value) : string.Empty);
+                panel.Show(what, Rarity.ColorOf(hunt.Rarity), FormatDistance(nearestM));
             }
             else if (nearest != null)
             {
@@ -211,7 +219,7 @@ namespace MemeHunter.UI.Hunt
             return dot.rectTransform;
         }
 
-        static string RarityName(string serverRarity) => Rarity.Parse(serverRarity).ToString().ToUpperInvariant();
+        static string RarityName(string serverRarity) => Rarity.Name(Rarity.Parse(serverRarity)).ToUpperInvariant();   // EPIC, not UNCOMMON
 
         static string FormatDistance(double m) =>
             m >= 1000 ? (m / 1000.0).ToString("0.0") + " km" : Mathf.RoundToInt((float)m) + " m";
@@ -260,7 +268,8 @@ namespace MemeHunter.UI.Hunt
             navGroup = Column(root, "Navigation", new Vector2(1f, 0f), new Vector2(-14f, DirectionPanel.Height + 18f), 6);
             navGroup.GetComponent<VerticalLayoutGroup>().childAlignment = TextAnchor.LowerCenter;
             AddButton(navGroup, "Profile", theme?.profileIcon, () => AppNav.OpenScreen(AppNav.Profile));
-            AddButton(navGroup, "Notifications", theme?.notificationsIcon, () => AppNav.OpenScreen(AppNav.Notifications));
+            if (Features.Notifications)                                    // sample messages only: no server notifications yet
+                AddButton(navGroup, "Notifications", theme?.notificationsIcon, () => AppNav.OpenScreen(AppNav.Notifications));
             AddButton(navGroup, "Collections", theme?.collectionIcon, () => AppNav.OpenScreen(AppNav.Collections));
             AddButton(navGroup, "Leaderboard", theme?.leaderboardIcon, () => AppNav.OpenScreen(AppNav.Leaderboard));
             AddButton(navGroup, "Donate", theme?.donateIcon, () => DonateScreen.Open());

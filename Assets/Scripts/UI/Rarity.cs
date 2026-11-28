@@ -25,6 +25,18 @@ namespace MemeHunter.UI
             return System.Enum.TryParse(text, true, out MemeRarity rarity) ? rarity : MemeRarity.Common;
         }
 
+        /// <summary>
+        /// Value order as on the server: common &lt; rare &lt; epic &lt; legendary (epic gives 40 coins, rare 20).
+        /// The enum keeps Uncommon (= epic) before Rare because the meme assets store the enum number; sort with this.
+        /// </summary>
+        public static int Order(MemeRarity rarity) => rarity switch
+        {
+            MemeRarity.Rare => 1,
+            MemeRarity.Uncommon => 2,
+            MemeRarity.Legendary => 3,
+            _ => 0
+        };
+
         /// <summary>The name the player sees: the Uncommon tier is called Epic.</summary>
         public static string Name(MemeRarity rarity) => rarity == MemeRarity.Uncommon ? "Epic" : rarity.ToString();
 
