@@ -119,3 +119,6 @@ InitTestScene*.unity*
 
 # User-specific files
 Assets/Resources/Mapbox/MapboxConfiguration.txt
+# Unity crash-recovery copies of scenes
+Assets/_Recovery/
+Assets/_Recovery.meta
